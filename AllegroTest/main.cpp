@@ -21,6 +21,8 @@ int main(int argc, char **argv){
       return -1;
    }
  
+   //brandon nolan tom
+
    timer = al_create_timer(1.0 / FPS);
    if(!timer) {
       fprintf(stderr, "failed to create timer!\n");
