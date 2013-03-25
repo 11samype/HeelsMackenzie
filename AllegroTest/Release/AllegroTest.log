@@ -1,2 +1,3 @@
-﻿  main.cpp
-main.cpp(1): fatal error C1083: Cannot open include file: 'allegro.h': No such file or directory
+﻿  Generating code
+  Finished generating code
+  AllegroTest.vcxproj -> C:\Users\tombn\HeelsMackenzie\Release\HeelsMackenzie.exe
