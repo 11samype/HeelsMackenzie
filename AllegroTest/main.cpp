@@ -280,6 +280,7 @@ void UpdateMackenzie(Mackenzie &mackenzie){
 		mackenzie.vy = -4;
 
 	//add gravity to velocity
+	if(!mackenzie.onGround)
 		mackenzie.vy += GRAVITY;
 
 	//max vel downword
