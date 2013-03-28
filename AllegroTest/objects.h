@@ -1,24 +1,29 @@
 //Object IDS
-enum IDS{PLAYER, BULLET, ENEMY};
+enum IDS{PLAYER, BULLET, ENEMY, BRICK};
 
 //Our Player
 struct Mackenzie
 {
 	int ID;
-	int x;
-	int y;
+	float x;
+	float y;
 	int lives;
-	int speed;
+	float vx;
+	float vy;
+	float acc;
+	float dec;
+	float maxSpeed;
 	int boundx;
 	int boundy;
 	int score;
+	bool onGround;
 };
 
 struct Bullet
 {
 	int ID;
-	int x;
-	int y;
+	float x;
+	float y;
 	bool live;
 	int speed;
 };
@@ -26,10 +31,18 @@ struct Bullet
 struct Enemy
 {
 	int ID;
-	int x;
-	int y;
+	float x;
+	float y;
 	bool live;
-	int speed;
+	float speed;
 	int boundx;
 	int boundy;
+};
+
+struct Brick
+{
+	int ID;
+	float x;
+	float y;
+	int size;
 };
