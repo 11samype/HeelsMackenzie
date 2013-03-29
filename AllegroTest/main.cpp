@@ -4,6 +4,7 @@
 #include <allegro5\allegro_ttf.h>
 #include "objects.h"
 #include <math.h>
+#include <allegro5\allegro_image.h>
 
 enum KEYS{UP, DOWN, LEFT, RIGHT, SPACE};
 bool keys[5] = {false, false, false, false, false};
@@ -15,7 +16,7 @@ const int NUM_BRICKS = 192;
 const float GRAVITY = .175;
 
 void InitMackenzie(Mackenzie &mackenzie);
-void DrawMackenzie(Mackenzie &mackenzie);
+void DrawMackenzie(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic);
 void JumpMackenzie(Mackenzie &mackenzie);
 void MoveMackenzieDown(Mackenzie &mackenzie);
 void MoveMackenzieLeft(Mackenzie &mackenzie);
@@ -29,13 +30,13 @@ void UpdateBullet(Bullet bullets[], int size);
 void CollideBullet(Bullet bullets[], int bSize, Enemy enemies[], int eSize);
 
 void InitEnemy(Enemy enemies[], int size);
-void DrawEnemy(Enemy enemies[], int size);
+void DrawEnemy(Enemy enemies[], int size, ALLEGRO_BITMAP *ghost);
 void StartEnemy(Enemy enemies[], int size);
 void UpdateEnemy(Enemy enemies[], int size);
 void CollideEnemy(Enemy enemies[], int size, Mackenzie &mackenzie);
 
 void InitBrick(Brick bricks[], int size);
-void DrawBrick(Brick bricks[], int size);
+void DrawBrick(Brick bricks[], int size, ALLEGRO_BITMAP *platform);
 void UpdateBrick(Brick bricks[], int size);
 void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie);
 bool IsBrickOnScreen(Brick bricks[], int brick);
@@ -44,6 +45,11 @@ int main ()
 {
 	bool done = false;
 	bool redraw = true;
+
+	ALLEGRO_BITMAP *back = NULL;
+	ALLEGRO_BITMAP *platform = NULL;
+	ALLEGRO_BITMAP *ghost = NULL;
+	ALLEGRO_BITMAP *mackenziePic = NULL;
 
 	int FPS = 60;
 	int frames = 0;
@@ -74,8 +80,17 @@ int main ()
 	al_install_keyboard();
 	al_init_font_addon();
 	al_init_ttf_addon();
+	al_init_image_addon();
 	ALLEGRO_FONT *font18 = al_load_font("arial.ttf", 18, 0);
 	event_queue = al_create_event_queue();
+
+	back = al_load_bitmap("basicBackground2.bmp");
+	platform = al_load_bitmap("brick1.bmp");
+	ghost = al_load_bitmap("ghost.bmp");
+	mackenziePic = al_load_bitmap("mackenzie.bmp");
+
+	int imageWidth = al_get_bitmap_width(back);
+	int imageHeight = al_get_bitmap_height(back);
 
 
 	srand(time(NULL));
@@ -89,6 +104,9 @@ int main ()
 	al_register_event_source(event_queue, al_get_timer_event_source(timer));
 
 	al_start_timer(timer);
+
+	al_convert_mask_to_alpha(ghost, al_map_rgb(255, 0, 255));
+	al_convert_mask_to_alpha(mackenziePic, al_map_rgb(255, 0, 255));
 
 	while(!done)
 	{
@@ -190,10 +208,11 @@ int main ()
 			CollideEnemy(enemies, NUM_ENEMIES, mackenzie);
 			CollideBrick(bricks, NUM_BRICKS, mackenzie);
 
-			DrawMackenzie(mackenzie);
+			al_draw_bitmap(back, WIDTH / 2 - imageWidth / 2, HEIGHT / 2 - imageHeight / 2, 0);
+			DrawBrick(bricks, NUM_BRICKS, platform);
+			DrawMackenzie(mackenzie, mackenziePic);
 			DrawBullet(bullets, NUM_BULLETS);
-			DrawEnemy(enemies, NUM_ENEMIES);
-			DrawBrick(bricks, NUM_BRICKS);
+			DrawEnemy(enemies, NUM_ENEMIES, ghost);
 			al_flip_display();
 			al_clear_to_color(al_map_rgb(0,0,0));
 			//end drawing and updating everything
@@ -208,8 +227,8 @@ int main ()
 }
 
 void InitMackenzie(Mackenzie &mackenzie){
-	mackenzie.x = 50;
-	mackenzie.y = 50;
+	mackenzie.x = 1;
+	mackenzie.y = 1;
 	mackenzie.ID = PLAYER;
 	mackenzie.lives = 5;
 	mackenzie.vx = 0;
@@ -217,31 +236,14 @@ void InitMackenzie(Mackenzie &mackenzie){
 	mackenzie.acc = .075;
 	mackenzie.dec = .5;
 	mackenzie.maxSpeed = 5;
-	mackenzie.boundx = 40;
-	mackenzie.boundy = 40;
+	mackenzie.boundx = 31;
+	mackenzie.boundy = 62;
 	mackenzie.score = 0;
 	mackenzie.onGround = false;
 }
 
-void DrawMackenzie(Mackenzie &mackenzie){
-	al_draw_filled_rounded_rectangle(mackenzie.x, mackenzie.y,
-		mackenzie.x + 40, mackenzie.y + 40, 10, 10, al_map_rgb(0, 255, 0));
-	
-	al_draw_filled_triangle(mackenzie.x + 10, mackenzie.y + 5,
-		mackenzie.x + 5, mackenzie.y + 15,
-		mackenzie.x + 15, mackenzie.y + 15, al_map_rgb(0, 0, 0)); 
-
-	al_draw_filled_triangle(mackenzie.x + 30, mackenzie.y + 5,
-		mackenzie.x + 25, mackenzie.y + 15,
-		mackenzie.x + 35, mackenzie.y + 15, al_map_rgb(0, 0, 0));
-
-	al_draw_filled_triangle(mackenzie.x + 20, mackenzie.y + 15,
-		mackenzie.x + 15, mackenzie.y + 25,
-		mackenzie.x + 25, mackenzie.y + 25, al_map_rgb(0, 0, 0));
-
-	al_draw_filled_triangle(mackenzie.x + 20, mackenzie.y + 38,
-		mackenzie.x + 38, mackenzie.y + 27,
-		mackenzie.x + 2, mackenzie.y + 27, al_map_rgb(0, 0, 0));
+void DrawMackenzie(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic){
+	al_draw_bitmap(mackenziePic, mackenzie.x-1, mackenzie.y-1, 0);
 }
 
 void JumpMackenzie(Mackenzie &mackenzie){
@@ -280,8 +282,7 @@ void UpdateMackenzie(Mackenzie &mackenzie){
 		mackenzie.vy = -4;
 
 	//add gravity to velocity
-	if(!mackenzie.onGround)
-		mackenzie.vy += GRAVITY;
+	mackenzie.vy += GRAVITY;
 
 	//max vel downword
 	if(mackenzie.vy > 15)
@@ -360,14 +361,14 @@ void InitEnemy(Enemy enemies[], int size){
 		enemies[i].ID = ENEMY;
 		enemies[i].live = false;
 		enemies[i].speed = 5;
-		enemies[i].boundx = 18;
-		enemies[i].boundy = 18;
+		enemies[i].boundx = 15;
+		enemies[i].boundy = 13;
 	}
 }
-void DrawEnemy(Enemy enemies[], int size){
+void DrawEnemy(Enemy enemies[], int size, ALLEGRO_BITMAP *ghost){
 	for(int i = 0; i < size; i++){
 		if(enemies[i].live){
-			al_draw_filled_circle(enemies[i].x, enemies[i].y, 20, al_map_rgb(255,0,0));
+			al_draw_bitmap(ghost, enemies[i].x, enemies[i].y, 0);
 		}
 	}
 }
@@ -412,155 +413,186 @@ void CollideEnemy(Enemy enemies[], int size, Mackenzie &mackenzie){
 void InitBrick(Brick bricks[], int size){
 	for(int i = 0; i < size; i++){
 		bricks[i].ID = BRICK;
-		bricks[i].size = 40;
+		bricks[i].size = 32;
 	}
 
 	bricks[1].x = 0;
 	bricks[1].y = 0;
-	bricks[2].x = 40;
+	bricks[2].x = 32;
 	bricks[2].y = 0;
-	bricks[3].x = 80;
+	bricks[3].x = 64;
 	bricks[3].y = 0;
-	bricks[4].x = 120;
+	bricks[4].x = 96;
 	bricks[4].y = 0;
-	bricks[5].x = 480;
+	bricks[5].x = 512;
 	bricks[5].y = 0;
-	bricks[6].x = 520;
+	bricks[6].x = 544;
 	bricks[6].y = 0;
-	bricks[7].x = 560;
+	bricks[7].x = 576;
 	bricks[7].y = 0;
-	bricks[8].x = 600;
+	bricks[8].x = 608;
 	bricks[8].y = 0;
 
 	bricks[9].x = 0;
-	bricks[9].y = 40;
-	bricks[10].x = 280;
-	bricks[10].y = 40;
-	bricks[11].x = 320;
-	bricks[11].y = 40;
-	bricks[12].x = 600;
-	bricks[12].y = 40;
+	bricks[9].y = 32;
+	bricks[10].x = 256;
+	bricks[10].y = 32;
+	bricks[11].x = 288;
+	bricks[11].y = 32;
+	bricks[65].x = 320;
+	bricks[66].y = 32;
+	bricks[12].x = 608;
+	bricks[12].y = 32;
 
 	bricks[13].x = 0;
-	bricks[13].y = 80;
-	bricks[14].x = 120;
-	bricks[14].y = 80;
-	bricks[15].x = 600;
-	bricks[15].y = 80;
+	bricks[13].y = 64;
+	bricks[15].x = 608;
+	bricks[15].y = 64;
 
 	bricks[16].x = 0;
-	bricks[16].y = 120;
-	bricks[17].x = 80;
-	bricks[17].y = 120;
-	bricks[18].x = 120;
-	bricks[18].y = 120;
-	bricks[19].x = 400;
-	bricks[19].y = 120;
-	bricks[20].x = 440;
-	bricks[20].y = 120;
-	bricks[21].x = 480;
-	bricks[21].y = 120;
-	bricks[22].x = 600;
-	bricks[22].y = 120;
+	bricks[16].y = 96;
+	bricks[17].x = 608;
+	bricks[17].y = 96;
 
-	bricks[23].x = 0;
-	bricks[23].y = 160;
-	bricks[24].x = 120;
-	bricks[24].y = 160;
-	bricks[25].x = 600;
+	bricks[18].x = 0;
+	bricks[18].y = 128;
+	bricks[19].x = 96;
+	bricks[19].y = 128;
+	bricks[20].x = 128;
+	bricks[20].y = 128;
+	bricks[21].x = 416;
+	bricks[21].y = 128;
+	bricks[22].x = 448;
+	bricks[22].y = 128;
+	bricks[23].x = 480;
+	bricks[23].y = 128;
+	bricks[24].x = 608;
+	bricks[24].y = 128;
+
+	bricks[25].x = 608;
 	bricks[25].y = 160;
-
 	bricks[26].x = 0;
-	bricks[26].y = 200;
-	bricks[27].x = 40;
-	bricks[27].y = 200;
-	bricks[28].x = 120;
-	bricks[28].y = 200;
-	bricks[29].x = 160;
-	bricks[29].y = 200;
-	bricks[30].x = 200;
-	bricks[30].y = 200;
-	bricks[31].x = 240;
-	bricks[31].y = 200;
-	bricks[32].x = 280;
-	bricks[32].y = 200;
-	bricks[33].x = 600;
-	bricks[33].y = 200;
+	bricks[26].y = 160;
+	bricks[27].x = 128;
+	bricks[27].y = 160;
 
-	bricks[34].x = 0;
-	bricks[34].y = 240;
-	bricks[35].x = 120;
-	bricks[35].y = 240;
-	bricks[36].x = 600;
-	bricks[36].y = 240;
+	bricks[28].x = 0;
+	bricks[28].y = 192;
+	bricks[29].x = 128;
+	bricks[29].y = 192;
+	bricks[30].x = 608;
+	bricks[30].y = 192;
 
-	bricks[37].x = 0;
-	bricks[37].y = 280;
-	bricks[38].x = 80;
-	bricks[38].y = 280;
-	bricks[39].x = 120;
-	bricks[39].y = 280;
-	bricks[40].x = 320;
-	bricks[40].y = 280;
-	bricks[41].x = 600;
-	bricks[41].y = 280;
+	bricks[31].x = 0;
+	bricks[31].y = 224;
+	bricks[32].x = 128;
+	bricks[32].y = 224;
+	bricks[33].x = 160;
+	bricks[33].y = 224;
+	bricks[34].x = 192;
+	bricks[34].y = 224;
+	bricks[35].x = 224;
+	bricks[35].y = 224;
+	bricks[36].x = 256;
+	bricks[36].y = 224;
+	bricks[37].x = 32;
+	bricks[37].y = 224;
+	bricks[38].x = 608;
+	bricks[38].y = 224;
 
-	bricks[42].x = 0;
-	bricks[42].y = 320;
-	bricks[43].x = 120;
-	bricks[43].y = 320;
-	bricks[44].x = 600;
-	bricks[44].y = 320;
+	bricks[39].x = 0;
+	bricks[39].y = 256;
+	bricks[40].x = 128;
+	bricks[40].y = 256;
+	bricks[41].x = 480;
+	bricks[41].y = 256;
+	bricks[42].x = 512;
+	bricks[42].y = 256;
+	bricks[43].x = 544;
+	bricks[43].y = 256;
+	bricks[44].x = 576;
+	bricks[44].y = 256;
+	bricks[45].x = 608;
+	bricks[45].y = 256;
 
-	bricks[45].x = 0;
-	bricks[45].y = 360;
-	bricks[46].x = 40;
-	bricks[46].y = 360;
-	bricks[47].x = 400;
-	bricks[47].y = 360;
-	bricks[48].x = 600;
-	bricks[48].y = 360;
+	bricks[46].x = 0;
+	bricks[46].y = 288;
+	bricks[47].x = 128;
+	bricks[47].y = 288;
+	bricks[48].x = 608;
+	bricks[48].y = 288;
 
 	bricks[49].x = 0;
-	bricks[49].y = 400;
-	bricks[50].x = 40;
-	bricks[50].y = 400;
-	bricks[51].x = 400;
-	bricks[51].y = 400;
-	bricks[52].x = 600;
-	bricks[52].y = 400;
+	bricks[49].y = 320;
+	bricks[50].x = 96;
+	bricks[50].y = 320;
+	bricks[51].x = 128;
+	bricks[51].y = 320;
+	bricks[52].x = 608;
+	bricks[52].y = 320;
 
 	bricks[53].x = 0;
-	bricks[53].y = 440;
-	bricks[54].x = 40;
-	bricks[54].y = 440;
-	bricks[55].x = 80;
-	bricks[55].y = 440;
-	bricks[56].x = 120;
-	bricks[56].y = 440;
-	bricks[57].x = 160;
-	bricks[57].y = 440;
-	bricks[58].x = 200;
-	bricks[58].y = 440;
-	bricks[59].x = 320;
-	bricks[59].y = 440;
-	bricks[60].x = 400;
-	bricks[60].y = 440;
-	bricks[61].x = 480;
-	bricks[61].y = 440;
-	bricks[62].x = 520;
-	bricks[62].y = 440;
-	bricks[63].x = 560;
-	bricks[63].y = 440;
-	bricks[64].x = 600;
-	bricks[64].y = 440;
+	bricks[53].y = 352;
+	bricks[54].x = 608;
+	bricks[54].y = 352;
+
+	bricks[55].x = 0;
+	bricks[55].y = 384;
+	bricks[56].x = 384;
+	bricks[56].y = 384;
+	bricks[57].x = 416;
+	bricks[57].y = 384;
+	bricks[58].x = 608;
+	bricks[58].y = 384;
+
+	bricks[59].x = 0;
+	bricks[59].y = 416;
+	bricks[60].x = 32;
+	bricks[60].y = 416;
+	bricks[61].x = 384;
+	bricks[61].y = 416;
+	bricks[62].x = 416;
+	bricks[62].y = 416;
+	bricks[63].x = 608;
+	bricks[63].y = 416;
+
+	bricks[64].x = 0;
+	bricks[64].y = 448;
+	bricks[65].x = 32;
+	bricks[65].y = 448;
+	bricks[66].x = 64;
+	bricks[66].y = 448;
+	bricks[67].x = 96;
+	bricks[67].y = 448;
+	bricks[68].x = 128;
+	bricks[68].y = 448;
+	bricks[69].x = 160;
+	bricks[69].y = 448;
+	bricks[70].x = 256;
+	bricks[70].y = 448;
+	bricks[71].x = 384;
+	bricks[71].y = 448;
+	bricks[72].x = 416;
+	bricks[72].y = 448;
+	bricks[73].x = 544;
+	bricks[73].y = 448;
+	bricks[74].x = 576;
+	bricks[74].y = 448;
+	bricks[75].x = 608;
+	bricks[75].y = 448;
+
+	bricks[76].x = 256;
+	bricks[76].y = 256;
+	bricks[77].x = 256;
+	bricks[77].y = 288;
+	bricks[78].x = 288;
+	bricks[78].y = 288;
 
 }
-void DrawBrick(Brick bricks[], int size){
+void DrawBrick(Brick bricks[], int size, ALLEGRO_BITMAP *platform){
 	for(int i = 0; i < size; i++){
 		if(IsBrickOnScreen(bricks, i)){
-				al_draw_filled_rectangle(bricks[i].x, bricks[i].y,
-					bricks[i].x + bricks[i].size, bricks[i].y + bricks[i].size, al_map_rgb(165, 42, 42));
+			al_draw_bitmap(platform, bricks[i].x, bricks[i].y, 0);
 		}
 	}
 }
