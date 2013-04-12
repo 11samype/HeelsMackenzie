@@ -13,8 +13,10 @@ struct Mackenzie
 	float acc;
 	float dec;
 	float maxSpeed;
-	int boundx;
-	int boundy;
+	int boundDown;
+	int boundUp;
+	int boundLeft;
+	int boundRight;
 	int score;
 	bool onGround;
 };
@@ -35,8 +37,10 @@ struct Enemy
 	float y;
 	bool live;
 	float speed;
-	int boundx;
-	int boundy;
+	int boundDown;
+	int boundUp;
+	int boundLeft;
+	int boundRight;
 };
 
 struct Brick

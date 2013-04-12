@@ -5,12 +5,13 @@
 #include "objects.h"
 #include <math.h>
 #include <allegro5\allegro_image.h>
+#include <stdio.h>
 
 enum KEYS{UP, DOWN, LEFT, RIGHT, SPACE};
 bool keys[5] = {false, false, false, false, false};
 const int WIDTH = 640;
 const int HEIGHT = 480;
-const int NUM_BULLETS = 5;
+const int NUM_BULLETS = 10;
 const int NUM_ENEMIES = 10;
 const int NUM_BRICKS = 192;
 const float GRAVITY = .175;
@@ -39,6 +40,10 @@ void InitBrick(Brick bricks[], int size);
 void DrawBrick(Brick bricks[], int size, ALLEGRO_BITMAP *platform);
 void UpdateBrick(Brick bricks[], int size);
 void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie);
+void CollideBrickLeft(Brick bricks[], int size, Mackenzie &mackenzie);
+void CollideBrickRight(Brick bricks[], int size, Mackenzie &mackenzie);
+void CollideBrickUp(Brick bricks[], int size, Mackenzie &mackenzie);
+void CollideBrickDown(Brick bricks[], int size, Mackenzie &mackenzie);
 bool IsBrickOnScreen(Brick bricks[], int brick);
 
 int main ()
@@ -82,6 +87,8 @@ int main ()
 	al_init_ttf_addon();
 	al_init_image_addon();
 	ALLEGRO_FONT *font18 = al_load_font("arial.ttf", 18, 0);
+	event_queue = al_create_event_queue();
+	ALLEGRO_FONT *font64 = al_load_font("arial.ttf", 64, 0);
 	event_queue = al_create_event_queue();
 
 	back = al_load_bitmap("basicBackground2.bmp");
@@ -134,6 +141,12 @@ int main ()
 				keys[SPACE] = true;
 				FireBullet(bullets, NUM_BULLETS, mackenzie);
 				break;
+			case ALLEGRO_KEY_R:
+				mackenzie.x = 50;
+				mackenzie.y = 50;
+				mackenzie.vx = 0;
+				mackenzie.vy = 0;
+				break;
 			}
 		}
 		else if(ev.type == ALLEGRO_EVENT_KEY_UP){
@@ -173,7 +186,7 @@ int main ()
 				MoveMackenzieLeft(mackenzie);
 			if(keys[RIGHT] && !keys[LEFT])
 				MoveMackenzieRight(mackenzie);
-			
+
 
 
 
@@ -206,13 +219,17 @@ int main ()
 			UpdateMackenzie(mackenzie);
 			CollideBullet(bullets, NUM_BULLETS, enemies, NUM_ENEMIES);
 			CollideEnemy(enemies, NUM_ENEMIES, mackenzie);
-			CollideBrick(bricks, NUM_BRICKS, mackenzie);
+			CollideBrick(bricks, NUM_BRICKS,  mackenzie);
 
 			al_draw_bitmap(back, WIDTH / 2 - imageWidth / 2, HEIGHT / 2 - imageHeight / 2, 0);
 			DrawBrick(bricks, NUM_BRICKS, platform);
 			DrawMackenzie(mackenzie, mackenziePic);
 			DrawBullet(bullets, NUM_BULLETS);
 			DrawEnemy(enemies, NUM_ENEMIES, ghost);
+			if(mackenzie.y > HEIGHT){
+				al_draw_textf(font64, al_map_rgb(255, 255, 255), 100, HEIGHT/2, 
+					0, "GAME OVER");
+			}
 			al_flip_display();
 			al_clear_to_color(al_map_rgb(0,0,0));
 			//end drawing and updating everything
@@ -227,8 +244,8 @@ int main ()
 }
 
 void InitMackenzie(Mackenzie &mackenzie){
-	mackenzie.x = 1;
-	mackenzie.y = 1;
+	mackenzie.x = 50;
+	mackenzie.y = 50;
 	mackenzie.ID = PLAYER;
 	mackenzie.lives = 5;
 	mackenzie.vx = 0;
@@ -236,23 +253,23 @@ void InitMackenzie(Mackenzie &mackenzie){
 	mackenzie.acc = .075;
 	mackenzie.dec = .5;
 	mackenzie.maxSpeed = 5;
-	mackenzie.boundx = 31;
-	mackenzie.boundy = 62;
+	mackenzie.boundLeft = 0;
+	mackenzie.boundRight = 32;
+	mackenzie.boundUp = 0;
+	mackenzie.boundDown = 64;
 	mackenzie.score = 0;
 	mackenzie.onGround = false;
+	mackenzie.score = 0;
 }
-
 void DrawMackenzie(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic){
 	al_draw_bitmap(mackenziePic, mackenzie.x-1, mackenzie.y-1, 0);
 }
-
 void JumpMackenzie(Mackenzie &mackenzie){
 	if(mackenzie.onGround && !(mackenzie.vy > 0)){
 		mackenzie.vy = -6.5;
 		mackenzie.onGround = false;
 	}
 }
-
 void MoveMackenzieDown(Mackenzie &mackenzie){
 	//to be implemented
 }
@@ -277,6 +294,7 @@ void MoveMackenzieRight(Mackenzie &mackenzie){
 		mackenzie.vx = mackenzie.maxSpeed;
 }
 void UpdateMackenzie(Mackenzie &mackenzie){
+
 	//can jump at different heights if release up earlier
 	if(!keys[UP] && mackenzie.vy < -4)
 		mackenzie.vy = -4;
@@ -300,7 +318,6 @@ void UpdateMackenzie(Mackenzie &mackenzie){
 	mackenzie.x += mackenzie.vx;
 	mackenzie.y += mackenzie.vy;
 }
-
 
 
 void InitBullet(Bullet bullets[], int size){
@@ -342,10 +359,10 @@ void CollideBullet(Bullet bullets[], int bSize, Enemy enemies[], int eSize){
 		if(bullets[i].live){
 			for(int j = 0; j < eSize; j++){
 				if(enemies[j].live){
-					if(bullets[i].x > (enemies[j].x - enemies[j].boundx) &&
-						bullets[i].x < (enemies[j].x + enemies[j].boundx) &&
-						bullets[i].y > (enemies[j].y - enemies[j].boundy) &&
-						bullets[i].y < (enemies[j].y + enemies[j].boundy))
+					if(bullets[i].x > (enemies[j].x + enemies[j].boundLeft) &&
+						bullets[i].x < (enemies[j].x + enemies[j].boundRight) &&
+						bullets[i].y > (enemies[j].y + enemies[j].boundUp) &&
+						bullets[i].y < (enemies[j].y + enemies[j].boundDown))
 					{
 						bullets[i].live = false;
 						enemies[j].live = false;
@@ -361,8 +378,10 @@ void InitEnemy(Enemy enemies[], int size){
 		enemies[i].ID = ENEMY;
 		enemies[i].live = false;
 		enemies[i].speed = 5;
-		enemies[i].boundx = 15;
-		enemies[i].boundy = 13;
+		enemies[i].boundLeft = 1;
+		enemies[i].boundRight = 31;
+		enemies[i].boundUp = 1;
+		enemies[i].boundDown = 31;
 	}
 }
 void DrawEnemy(Enemy enemies[], int size, ALLEGRO_BITMAP *ghost){
@@ -395,10 +414,10 @@ void UpdateEnemy(Enemy enemies[], int size){
 void CollideEnemy(Enemy enemies[], int size, Mackenzie &mackenzie){
 	for(int i = 0; i < size; i++){
 		if(enemies[i].live){
-			if(enemies[i].x - enemies[i].boundx < mackenzie.x + mackenzie.boundx &&
-				enemies[i].x + enemies[i].boundx > mackenzie.x &&
-				enemies[i].y - enemies[i].boundy < mackenzie.y + mackenzie.boundy &&
-				enemies[i].y + enemies[i].boundy > mackenzie.y){
+			if(enemies[i].x + enemies[i].boundLeft < mackenzie.x + mackenzie.boundRight &&
+				enemies[i].x + enemies[i].boundRight > mackenzie.x + mackenzie.boundLeft &&
+				enemies[i].y + enemies[i].boundUp < mackenzie.y + mackenzie.boundDown &&
+				enemies[i].y + enemies[i].boundDown > mackenzie.y + mackenzie.boundUp){
 					mackenzie.lives--;
 					enemies[i].live = false;
 			}
@@ -601,52 +620,81 @@ void UpdateBrick(Brick bricks[], int size){
 
 }
 void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie){
-	for(int i = 0; i < size; i++){
-		if(IsBrickOnScreen(bricks, i)){
-			//check if collided with any brick on screen
-			if(!((mackenzie.y + mackenzie.boundy) < bricks[i].y ||
-				mackenzie.y > (bricks[i].y + bricks[i].size) ||
-				(mackenzie.x + mackenzie.boundx) < bricks[i].x ||
-				mackenzie.x > (bricks[i].x + bricks[i].size))){
-					//find side collided on then change x or y coordinate accordingly
-					float angle = atan2((bricks[i].y-mackenzie.y), (mackenzie.x - bricks[i].x));
-					float cosAngle = cos(angle);
-					float sinAngle = sin(angle);
-					float difference = abs(cosAngle) - abs(sinAngle);
-					if(abs(cosAngle) > abs(sinAngle)){
-						if(cosAngle > 0){
-							mackenzie.x = bricks[i].x + bricks[i].size;
-							if(mackenzie.vx < 0)
-								mackenzie.vx = 0;
-						}
-						else if(cosAngle < 0){
-							mackenzie.x = bricks[i].x - mackenzie.boundx;
-							if(mackenzie.vx > 0)
-								mackenzie.vx = 0;
-						}
-					}
-					else if(abs(sinAngle) > abs(cosAngle)){
-						if(sinAngle > 0){
-							mackenzie.y = bricks[i].y - mackenzie.boundy;
-							if(mackenzie.vy > 0)
-								mackenzie.vy = 0;
-							mackenzie.onGround = true;
-						}
-						else if(sinAngle < 0){
-							mackenzie.y = bricks[i].y + bricks[i].size;
-							if(mackenzie.vy < 0)
-								mackenzie.vy = 0;
-						}
-					}
 
+	for(int i = 0; i < size; i++){
+		if(!((mackenzie.y + mackenzie.boundDown) < bricks[i].y ||
+			(mackenzie.y + mackenzie.boundUp) > (bricks[i].y + bricks[i].size) ||
+			(mackenzie.x + mackenzie.boundRight) < bricks[i].x ||
+			(mackenzie.x + mackenzie.boundLeft) > (bricks[i].x + bricks[i].size))){
+				CollideBrickLeft(bricks, size, mackenzie);
+				CollideBrickRight(bricks, size, mackenzie);
+				CollideBrickUp(bricks, size, mackenzie);
+				CollideBrickDown(bricks, size, mackenzie);
+		}
+	}
+}
+void CollideBrickLeft(Brick bricks[], int size, Mackenzie &mackenzie){
+	for(int i = 0; i < size; i++){
+		if(bricks[i].x < mackenzie.x - 16){
+			if(bricks[i].x + bricks[i].size > mackenzie.x + mackenzie.boundLeft &&
+				mackenzie.y + 4 < bricks[i].y + bricks[i].size &&
+				mackenzie.y + 60 > bricks[i].y){
+//				printf("collide Left");
+				mackenzie.x = bricks[i].x + bricks[i].size - mackenzie.boundLeft;
+				if(mackenzie.vx < 0)
+					mackenzie.vx = 0;
+			}
+		}
+	}
+}
+void CollideBrickRight(Brick bricks[], int size, Mackenzie &mackenzie){
+	for(int i = 0; i < size; i++){
+		if(bricks[i].x > mackenzie.x + 16){
+			if(bricks[i].x < mackenzie.x + mackenzie.boundRight &&
+				mackenzie.y + 4 < bricks[i].y + bricks[i].size &&
+				mackenzie.y + 60 > bricks[i].y){
+//				printf("collide Right");
+				mackenzie.x = bricks[i].x - mackenzie.boundRight;
+				if(mackenzie.vx > 0)
+					mackenzie.vx = 0;
+			}
+		}
+	}
+}
+void CollideBrickUp(Brick bricks[], int size, Mackenzie &mackenzie){
+	for(int i = 0; i < size; i++){
+		if(bricks[i].y < mackenzie.y - 16){
+			if(mackenzie.y + mackenzie.boundUp < bricks[i].y + bricks[i].size &&
+				mackenzie.x < bricks[i].x + bricks[i].size &&
+				mackenzie.x + 32 > bricks[i].x){
+				mackenzie.y = bricks[i].y + bricks[i].size - mackenzie.boundUp;
+//				printf("collide Up");
+				if(mackenzie.vy < 0)
+					mackenzie.vy = 0;
+			}
+		}
+	}
+}
+void CollideBrickDown(Brick bricks[], int size, Mackenzie &mackenzie){
+	for(int i = 0; i < size; i++){
+		if(bricks[i].y > mackenzie.y + 48){
+			if(bricks[i].y < mackenzie.y + mackenzie.boundDown &&
+				mackenzie.x < bricks[i].x + bricks[i].size &&
+				mackenzie.x + 32 > bricks[i].x){
+				mackenzie.y = bricks[i].y - mackenzie.boundDown;
+//				printf("collide Down");
+				if(mackenzie.vy > 0)
+					mackenzie.vy = 0;
+				mackenzie.onGround = true;
 			}
 		}
 	}
 }
 
+
 bool IsBrickOnScreen(Brick bricks[], int brick){
 	return (bricks[brick].x + bricks[brick].size > 0 &&
-			bricks[brick].x < WIDTH &&
-			bricks[brick].y < HEIGHT &&
-			bricks[brick].y + bricks[brick].size > 0);
+		bricks[brick].x < WIDTH &&
+		bricks[brick].y < HEIGHT &&
+		bricks[brick].y + bricks[brick].size > 0);
 }
