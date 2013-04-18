@@ -1,5 +1,5 @@
 //Object IDS
-enum IDS{PLAYER, BULLET, ENEMY, BRICK};
+enum IDS{PLAYER, BULLET, ENEMY, BRICK, SPRING};
 
 //Our Player
 struct Mackenzie

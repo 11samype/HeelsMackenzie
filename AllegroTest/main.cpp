@@ -13,7 +13,7 @@ const int WIDTH = 640;
 const int HEIGHT = 480;
 const int NUM_BULLETS = 10;
 const int NUM_ENEMIES = 10;
-const int NUM_BRICKS = 192;
+const int NUM_BRICKS = 200;
 const float GRAVITY = .175;
 
 void InitMackenzie(Mackenzie &mackenzie);
@@ -186,10 +186,6 @@ int main ()
 				MoveMackenzieLeft(mackenzie);
 			if(keys[RIGHT] && !keys[LEFT])
 				MoveMackenzieRight(mackenzie);
-
-
-
-
 		}
 
 		if(redraw && (al_is_event_queue_empty(event_queue)))
@@ -207,8 +203,6 @@ int main ()
 				frames = 0;
 				lastUpdateTime = currentTime;
 			}
-			al_draw_textf(font18, al_map_rgb(255, 255, 255), WIDTH, 0, 
-				ALLEGRO_ALIGN_RIGHT, "FPS : %i", actualFPS);
 			//end calculate and display fps timer
 
 
@@ -230,11 +224,12 @@ int main ()
 				al_draw_textf(font64, al_map_rgb(255, 255, 255), 100, HEIGHT/2, 
 					0, "GAME OVER");
 			}
+			al_draw_textf(font18, al_map_rgb(255, 255, 255), WIDTH, 0, 
+				ALLEGRO_ALIGN_RIGHT, "FPS : %i", actualFPS);
 			al_flip_display();
 			al_clear_to_color(al_map_rgb(0,0,0));
 			//end drawing and updating everything
 		}
-
 	}
 
 
@@ -423,7 +418,6 @@ void CollideEnemy(Enemy enemies[], int size, Mackenzie &mackenzie){
 			}
 			else if(enemies[i].x < 0){
 				enemies[i].live = false;
-				mackenzie.lives--;
 			}
 		}
 	}
@@ -434,6 +428,10 @@ void InitBrick(Brick bricks[], int size){
 		bricks[i].ID = BRICK;
 		bricks[i].size = 32;
 	}
+
+	bricks[0].x = 330;
+	bricks[0].y = 458;
+	bricks[0].ID = SPRING;
 
 	bricks[1].x = 0;
 	bricks[1].y = 0;
@@ -611,7 +609,13 @@ void InitBrick(Brick bricks[], int size){
 void DrawBrick(Brick bricks[], int size, ALLEGRO_BITMAP *platform){
 	for(int i = 0; i < size; i++){
 		if(IsBrickOnScreen(bricks, i)){
-			al_draw_bitmap(platform, bricks[i].x, bricks[i].y, 0);
+			if(bricks[i].ID == BRICK){
+				al_draw_bitmap(platform, bricks[i].x, bricks[i].y, 0);
+			}
+			else if(bricks[i].ID == SPRING){
+				al_draw_filled_rounded_rectangle(bricks[i].x, bricks[i].y, bricks[i].x + bricks[i].size,
+					bricks[i].y + bricks[i].size, 5, 5, al_map_rgb(0, 255, 0));
+			}
 		}
 	}
 }
@@ -639,10 +643,9 @@ void CollideBrickLeft(Brick bricks[], int size, Mackenzie &mackenzie){
 			if(bricks[i].x + bricks[i].size > mackenzie.x + mackenzie.boundLeft &&
 				mackenzie.y + 4 < bricks[i].y + bricks[i].size &&
 				mackenzie.y + 60 > bricks[i].y){
-//				printf("collide Left");
-				mackenzie.x = bricks[i].x + bricks[i].size - mackenzie.boundLeft;
-				if(mackenzie.vx < 0)
-					mackenzie.vx = 0;
+					mackenzie.x = bricks[i].x + bricks[i].size - mackenzie.boundLeft;
+					if(mackenzie.vx < 0)
+						mackenzie.vx = 0;
 			}
 		}
 	}
@@ -653,10 +656,9 @@ void CollideBrickRight(Brick bricks[], int size, Mackenzie &mackenzie){
 			if(bricks[i].x < mackenzie.x + mackenzie.boundRight &&
 				mackenzie.y + 4 < bricks[i].y + bricks[i].size &&
 				mackenzie.y + 60 > bricks[i].y){
-//				printf("collide Right");
-				mackenzie.x = bricks[i].x - mackenzie.boundRight;
-				if(mackenzie.vx > 0)
-					mackenzie.vx = 0;
+					mackenzie.x = bricks[i].x - mackenzie.boundRight;
+					if(mackenzie.vx > 0)
+						mackenzie.vx = 0;
 			}
 		}
 	}
@@ -667,10 +669,9 @@ void CollideBrickUp(Brick bricks[], int size, Mackenzie &mackenzie){
 			if(mackenzie.y + mackenzie.boundUp < bricks[i].y + bricks[i].size &&
 				mackenzie.x < bricks[i].x + bricks[i].size &&
 				mackenzie.x + 32 > bricks[i].x){
-				mackenzie.y = bricks[i].y + bricks[i].size - mackenzie.boundUp;
-//				printf("collide Up");
-				if(mackenzie.vy < 0)
-					mackenzie.vy = 0;
+					mackenzie.y = bricks[i].y + bricks[i].size - mackenzie.boundUp;
+					if(mackenzie.vy < 0)
+						mackenzie.vy = 0;
 			}
 		}
 	}
@@ -681,16 +682,19 @@ void CollideBrickDown(Brick bricks[], int size, Mackenzie &mackenzie){
 			if(bricks[i].y < mackenzie.y + mackenzie.boundDown &&
 				mackenzie.x < bricks[i].x + bricks[i].size &&
 				mackenzie.x + 32 > bricks[i].x){
-				mackenzie.y = bricks[i].y - mackenzie.boundDown;
-//				printf("collide Down");
-				if(mackenzie.vy > 0)
-					mackenzie.vy = 0;
-				mackenzie.onGround = true;
+					mackenzie.y = bricks[i].y - mackenzie.boundDown;
+					if(bricks[i].ID == BRICK){
+						if(mackenzie.vy > 0)
+							mackenzie.vy = 0;
+						mackenzie.onGround = true;
+					}
+					if(bricks[i].ID == SPRING){
+						mackenzie.vy = -10;
+					}
 			}
 		}
 	}
 }
-
 
 bool IsBrickOnScreen(Brick bricks[], int brick){
 	return (bricks[brick].x + bricks[brick].size > 0 &&
