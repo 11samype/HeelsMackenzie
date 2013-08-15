@@ -1,5 +1,13 @@
-﻿  Level.cpp
+﻿Build started 5/29/2013 1:29:47 PM.
+Project "\\tsclient\C\Users\samynpd\HeelsMackenzie\AllegroTest\AllegroTest.vcxproj" on node 2 (build target(s)).
+InitializeBuildStatus:
+  Creating "Release\HeelsMackenzie.unsuccessfulbuild" because "AlwaysCreate" was specified.
+ClCompile:
+  C:\Program Files\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /IC:\allegro\include /Zi /nologo /W3 /WX- /O2 /Oi /Oy- /GL /D _MBCS /U_CRT_SECURE_NO_WARNINGS /Gm- /EHsc /MT /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Release\\" /Fd"Release\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt main.cpp
   main.cpp
-  Generating code
-  Finished generating code
-  AllegroTest.vcxproj -> C:\Users\tombn\HeelsMackenzie\Release\HeelsMackenzie.exe
+main.cpp(1): fatal error C1083: Cannot open include file: 'allegro5\allegro.h': No such file or directory
+Done Building Project "\\tsclient\C\Users\samynpd\HeelsMackenzie\AllegroTest\AllegroTest.vcxproj" (build target(s)) -- FAILED.
+
+Build FAILED.
+
+Time Elapsed 00:00:01.30

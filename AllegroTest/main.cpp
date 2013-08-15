@@ -3,58 +3,154 @@
 #include <allegro5\allegro_font.h>
 #include <allegro5\allegro_ttf.h>
 #include "objects.h"
-#include <math.h>
 #include <allegro5\allegro_image.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <allegro5\allegro_audio.h>
+#include <allegro5\allegro_acodec.h>
+#define _CRT_SECURE_NO_WARNINGS
 
-enum KEYS{UP, DOWN, LEFT, RIGHT, SPACE};
-bool keys[5] = {false, false, false, false, false};
-const int WIDTH = 640;
+using namespace std;
+
+int frameDelayCount = 0;
+int currentFrame = 0;
+const int FRAMEDELAY = 6;
+const int numRunFrames = 8;
+const int numKickIdleFrames = 2;
+const int numJumpFrames = 4;
+
+enum KEYS{UP, DOWN, LEFT, RIGHT, SPACE, ENTER};
+bool keys[6] = {false, false, false, false, false, false};
+const int WIDTH = 854;
 const int HEIGHT = 480;
 const int NUM_BULLETS = 10;
-const int NUM_ENEMIES = 10;
-const int NUM_BRICKS = 200;
+const int NUM_ENEMIES = 200;
+const int NUM_BRICKS = 6000;
+const int NUM_EBULLETS = 100;
+const int NUM_LEVELS = 5;
 const float GRAVITY = .175;
+bool debug = false;
+bool pause = false;
+int stun = 4;
+int inCutscene = -1;
+fstream cutsceneFile;
+string cutline = "";
+
+string level = "loadLevel.txt";
+string levelEnemies = " ";
+string levelBackground = "basicBackground.bmp";
+bool loadNewLevel = false;
+
+bool dead = false;
+bool needPlayDeath = true;
+int bossHitCount = 0;
+
+void frameDelayIncrementer();
+
+void attack(Mackenzie &mackenzie, Enemy &enemy);
+void loadLevel(int levelNumber);
+void drawMenu(int menuOption, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title);
+void drawStart(int startOption, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title);
+void drawPause(int pauseOption, ALLEGRO_FONT *size18);
+void drawCredits(ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title);
+
+int loadSave(int menuOption, bool newGame);
+
+void hitMackenzie(Mackenzie &mackenzie, ALLEGRO_SAMPLE *mackenzie_hit);
+void loadLevel(int levelNumber);
 
 void InitMackenzie(Mackenzie &mackenzie);
-void DrawMackenzie(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic);
-void JumpMackenzie(Mackenzie &mackenzie);
+void DrawMackenzie(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, ALLEGRO_BITMAP *mackenziePicCrouch, ALLEGRO_BITMAP *moonWalkerPic, int &mapoffx, int mackenzieWidth, int mackenzieHeight, ALLEGRO_BITMAP *bullet_blast, Bullet bullets[], bool michael);
+void DrawRunRight(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, ALLEGRO_BITMAP *mackenziePicCrouch, int mackenzieWidth, int mackenzieHeight, int &mapoffx);
+void DrawMoonWalker(Mackenzie &mackenzie, ALLEGRO_BITMAP *moonWalkerPic, ALLEGRO_BITMAP *mackenziePicCrouch, int mackenzieWidth, int mackenzieHeight, int &mapoffx);
+void DrawRunLeft(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, ALLEGRO_BITMAP *mackenziePicCrouch, int mackenzieWidth, int mackenzieHeight, int &mapoffx);
+void DrawInAir(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, int mackenzieWidth, int mackenzieHeight, int &mapoffx);
+void DrawIdle(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, int mackenzieWidth, int mackenzieHeight, int &mapoffx);
+void DrawJump(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, int mackenzieWidth, int mackenzieHeight, int &mapoffx);
+void DrawKick(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, ALLEGRO_BITMAP *mackenziePicCrouch, int mackenzieWidth, int mackenzieHeight, ALLEGRO_BITMAP *bullet_blast, Bullet bullets[], int &mapoffx);
+
+void JumpMackenzie(Mackenzie &mackenzie, ALLEGRO_SAMPLE *jumpSound);
 void MoveMackenzieDown(Mackenzie &mackenzie);
 void MoveMackenzieLeft(Mackenzie &mackenzie);
 void MoveMackenzieRight(Mackenzie &mackenzie);
-void UpdateMackenzie(Mackenzie &mackenzie);
+void UpdateMackenzie(Mackenzie &mackenzie, int &mapoffx, int deadZone);
 
 void InitBullet(Bullet bullets[], int size);
-void DrawBullet(Bullet bullets[], int size);
-void FireBullet(Bullet bullets[], int size, Mackenzie &mackenzie);
-void UpdateBullet(Bullet bullets[], int size);
-void CollideBullet(Bullet bullets[], int bSize, Enemy enemies[], int eSize);
+void DrawBullet(Bullet bullets[], int size, int &mapoffx);
+void FireBullet(Bullet bullets[], int size, Mackenzie &mackenzie, ALLEGRO_SAMPLE *gunShot);
+void UpdateBullet(Bullet bullets[], int size, int &mapoffx);
+void CollideBullet(Bullet bullets[], int bSize, Enemy enemies[], int eSize, Brick bricks[], int brSize, ALLEGRO_SAMPLE *ghost_death, ALLEGRO_SAMPLE *explosion);
 
-void InitEnemy(Enemy enemies[], int size);
-void DrawEnemy(Enemy enemies[], int size, ALLEGRO_BITMAP *ghost);
-void StartEnemy(Enemy enemies[], int size);
-void UpdateEnemy(Enemy enemies[], int size);
-void CollideEnemy(Enemy enemies[], int size, Mackenzie &mackenzie);
+void InitEnemy(Enemy enemies[], int size, string levelEnemies, int &deadZone);
+void DrawEnemy(Enemy enemies[], int size, ALLEGRO_BITMAP *ghost, int &mapoffx,
+	ALLEGRO_BITMAP *bomb, ALLEGRO_BITMAP *boss, ALLEGRO_BITMAP *bossgrumpy, ALLEGRO_BITMAP *fish, int currentLevel);
+void StartEnemy(Enemy enemies[], int size, int &mapoffx, EBullet ebullets[], int bSize, Mackenzie &mackenzie, ALLEGRO_FONT *font64, Brick bricks[], int brSize);
+void UpdateEnemy(Enemy &enemy, EBullet ebullets[], int size, Mackenzie &mackenzie, ALLEGRO_FONT *font64, Brick bricks[], int brSize);
+void CollideEnemy(Enemy enemies[], int size, Mackenzie &mackenzie, ALLEGRO_SAMPLE *ghost_death, ALLEGRO_SAMPLE *mackenzie_hit);
 
-void InitBrick(Brick bricks[], int size);
-void DrawBrick(Brick bricks[], int size, ALLEGRO_BITMAP *platform);
-void UpdateBrick(Brick bricks[], int size);
-void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie);
+void InitBrick(Brick bricks[], int size, string level, Mackenzie &mackenzie);
+void DrawBrick(Brick bricks[], int size, ALLEGRO_BITMAP *platform, ALLEGRO_BITMAP *spring,
+	int &mapoffx, ALLEGRO_BITMAP *jump_pickup, ALLEGRO_FONT *size32, int unlocked,
+	ALLEGRO_BITMAP *eyeball, Mackenzie &mackenzie, ALLEGRO_BITMAP *seaweed);
+void UpdateBrick(Brick bricks[], int size, int &mapoffx, EBullet ebullets[], int ebsize, Mackenzie &mackenzie);
+void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie, int &unlocked, ALLEGRO_SAMPLE *powerup, int &currentLevel, int menuOption);
 void CollideBrickLeft(Brick bricks[], int size, Mackenzie &mackenzie);
 void CollideBrickRight(Brick bricks[], int size, Mackenzie &mackenzie);
 void CollideBrickUp(Brick bricks[], int size, Mackenzie &mackenzie);
 void CollideBrickDown(Brick bricks[], int size, Mackenzie &mackenzie);
-bool IsBrickOnScreen(Brick bricks[], int brick);
+bool IsBrickOnScreen(Brick bricks[], int brick, int &mapoffx);
+
+void FireCannon(Brick cannon, EBullet ebullets[], int size, Mackenzie &mackenzie);
+void InitEBullet(EBullet ebullets[], int size);
+void DrawEBullet(EBullet ebullets[], int size, int &mapoffx, ALLEGRO_BITMAP *lightning);
+void UpdateEBullet(EBullet ebullets[], int size, int &mapoffx);
+void CollideEBullet(EBullet ebullets[], int ebsize, Mackenzie &mackenzie, Brick bricks[], int brSize, ALLEGRO_SAMPLE *mackenzie_hit);
+
+void DrawBackground(ALLEGRO_BITMAP *back, Brick bricks[], int size, int &mapoffx);
+
+void attack(Mackenzie &mackenzie, Enemy &enemy, EBullet ebullets[], int size);
+
+void cutscene(Brick brick, int currentLevel);
+void nextScenePage();
 
 int main ()
 {
-	bool done = false;
+	bool michael = false;
+	bool done = true;
 	bool redraw = true;
+	bool menuSelect = false;
+	int menuOption = 1;
+	bool exitGame = false;
+	bool startUpScreen = true;
+	int startOption = 1;
+	bool newGame = false;
+	int unlocked = 1;
+	int currentLevel = 0;
+	bool credits = false;
+
+	int pauseOption = 1;
 
 	ALLEGRO_BITMAP *back = NULL;
 	ALLEGRO_BITMAP *platform = NULL;
 	ALLEGRO_BITMAP *ghost = NULL;
 	ALLEGRO_BITMAP *mackenziePic = NULL;
+	ALLEGRO_BITMAP *bullet_blast = NULL;
+	ALLEGRO_BITMAP *bomb = NULL;
+	ALLEGRO_BITMAP *jump_pickup = NULL;
+	ALLEGRO_BITMAP *spring = NULL;
+	ALLEGRO_BITMAP *mackenziePicCrouch = NULL;
+	ALLEGRO_BITMAP *heel = NULL;
+	ALLEGRO_BITMAP *moonWalkerPic = NULL;
+	ALLEGRO_BITMAP *eyeball = NULL;
+	ALLEGRO_BITMAP *boss = NULL;
+	ALLEGRO_BITMAP *title = NULL;
+	ALLEGRO_BITMAP *seaweed = NULL;
+	ALLEGRO_BITMAP *fish = NULL;
+	ALLEGRO_BITMAP *lightning = NULL;
+	ALLEGRO_BITMAP *bossgrumpy = NULL;
 
 	int FPS = 60;
 	int frames = 0;
@@ -62,19 +158,23 @@ int main ()
 	int lastUpdateTime = 0;
 	int elapsedTime = 0;
 	int actualFPS = 0;
+	int mapoffx = 0;
+	int deadZone = 350;
 
-	Mackenzie mackenzie;
-	Bullet bullets[NUM_BULLETS];
-	Enemy enemies[NUM_ENEMIES];
-	Brick bricks[NUM_BRICKS];
+	int maxSounds = 4;
+
+	int mackenzieWidth = 32;
+	int mackenzieHeight = 64;
+	int mackenzieWalkFrame = 0;
+	int mackenzieIdleFrame = 0;
 
 	ALLEGRO_DISPLAY *display = NULL;
 	ALLEGRO_EVENT_QUEUE *event_queue = NULL;
 	ALLEGRO_TIMER *timer = NULL;
 
-
 	if(!al_init())
 		return -1;
+	al_set_new_display_flags(ALLEGRO_WINDOWED | ALLEGRO_RESIZABLE);
 	display = al_create_display(WIDTH, HEIGHT);
 	if(!display)
 		return -1;
@@ -86,163 +186,750 @@ int main ()
 	al_init_font_addon();
 	al_init_ttf_addon();
 	al_init_image_addon();
-	ALLEGRO_FONT *font18 = al_load_font("arial.ttf", 18, 0);
-	event_queue = al_create_event_queue();
-	ALLEGRO_FONT *font64 = al_load_font("arial.ttf", 64, 0);
-	event_queue = al_create_event_queue();
 
-	back = al_load_bitmap("basicBackground2.bmp");
+	//music & sounds
+
+	al_install_audio();
+	al_init_acodec_addon();
+	al_reserve_samples(maxSounds);
+
+	ALLEGRO_SAMPLE *song = al_load_sample("MacAttack (Extended).wav");
+	ALLEGRO_SAMPLE *death = al_load_sample("MacDeath.wav");
+	ALLEGRO_SAMPLE *jumpSound = al_load_sample("Jump.wav");
+	ALLEGRO_SAMPLE *gunShot = al_load_sample("gun_shot.wav");
+	ALLEGRO_SAMPLE *powerup = al_load_sample("Powerup.wav");
+	ALLEGRO_SAMPLE *moonWalkerSound = al_load_sample("mj_louder.wav");
+	ALLEGRO_SAMPLE *ghost_death = al_load_sample("ghost_death.wav");
+	ALLEGRO_SAMPLE *mackenzie_hit = al_load_sample("heels_hit.wav");
+	ALLEGRO_SAMPLE *explosion = al_load_sample("explosion.wav");
+
+	event_queue = al_create_event_queue();
+	
+	//font
+
+	ALLEGRO_FONT *font18 = al_load_font("arial.ttf", 18, 0);	
+	ALLEGRO_FONT *font64 = al_load_font("arial.ttf", 64, 0);
+	ALLEGRO_FONT *font32 = al_load_font("arial.ttf", 32, 0);
+
 	platform = al_load_bitmap("brick1.bmp");
 	ghost = al_load_bitmap("ghost.bmp");
-	mackenziePic = al_load_bitmap("mackenzie.bmp");
-
-	int imageWidth = al_get_bitmap_width(back);
-	int imageHeight = al_get_bitmap_height(back);
-
-
-	srand(time(NULL));
-	InitMackenzie(mackenzie);
-	InitBullet(bullets, NUM_BULLETS);
-	InitEnemy(enemies, NUM_ENEMIES);
-	InitBrick(bricks, NUM_BRICKS);
+	mackenziePic = al_load_bitmap("mackenzie_sheet.bmp");
+	bullet_blast = al_load_bitmap("gun_blast.bmp");
+	bomb = al_load_bitmap("bomb.bmp");
+	jump_pickup = al_load_bitmap("jump_pickup.bmp");
+	spring = al_load_bitmap("spring_jump.bmp");
+	mackenziePicCrouch = al_load_bitmap("mackenzie_crawl_sheet.bmp");
+	heel = al_load_bitmap("heel.bmp");
+	moonWalkerPic = al_load_bitmap("moonwalkersheet.bmp");
+	eyeball = al_load_bitmap("eyeball.bmp");
+	boss = al_load_bitmap("boss.bmp");
+	title = al_load_bitmap("title.bmp");
+	seaweed = al_load_bitmap("seaweed.bmp");
+	fish = al_load_bitmap("fish.bmp");
+	lightning = al_load_bitmap("lightning.bmp");
+	bossgrumpy = al_load_bitmap("grumpyface.bmp");
 
 	al_register_event_source(event_queue, al_get_keyboard_event_source());
 	al_register_event_source(event_queue, al_get_display_event_source(display));
 	al_register_event_source(event_queue, al_get_timer_event_source(timer));
 
-	al_start_timer(timer);
-
 	al_convert_mask_to_alpha(ghost, al_map_rgb(255, 0, 255));
 	al_convert_mask_to_alpha(mackenziePic, al_map_rgb(255, 0, 255));
+	al_convert_mask_to_alpha(bullet_blast, al_map_rgb(255, 0, 255));
+	al_convert_mask_to_alpha(bomb, al_map_rgb(255, 0, 255));
+	al_convert_mask_to_alpha(jump_pickup, al_map_rgb(255, 0, 255));
+	al_convert_mask_to_alpha(spring, al_map_rgb(255, 0, 255));
+	al_convert_mask_to_alpha(mackenziePicCrouch, al_map_rgb(255, 0, 255));
+	al_convert_mask_to_alpha(heel, al_map_rgb(255, 0, 255));
+	al_convert_mask_to_alpha(moonWalkerPic, al_map_rgb(255, 0, 255));
+	al_convert_mask_to_alpha(eyeball, al_map_rgb(255, 0, 255));
+	al_convert_mask_to_alpha(boss, al_map_rgb(255, 0, 255));
+	al_convert_mask_to_alpha(seaweed, al_map_rgb(255, 0, 255));
+	al_convert_mask_to_alpha(fish, al_map_rgb(255, 0, 255));
+	al_convert_mask_to_alpha(lightning, al_map_rgb(255, 0, 255));
+	al_convert_mask_to_alpha(bossgrumpy, al_map_rgb(255, 0, 255));
 
-	while(!done)
-	{
-		ALLEGRO_EVENT ev;
-		al_wait_for_event(event_queue, &ev);
+	srand(time(NULL));
+	al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
 
-		if(ev.type == ALLEGRO_EVENT_KEY_DOWN)
-		{
-			switch(ev.keyboard.keycode)
+	Mackenzie mackenzie;
+	Bullet bullets[NUM_BULLETS];
+	Enemy enemies[NUM_ENEMIES];
+	Brick bricks[NUM_BRICKS];
+	EBullet ebullets[NUM_EBULLETS];
+	ALLEGRO_EVENT ev;
+
+	while(!exitGame){
+		keys[UP] = false;
+		keys[DOWN] = false;
+		keys[LEFT] = false;
+		keys[RIGHT] = false;
+		keys[SPACE] = false;
+		keys[ENTER] = false;
+		mapoffx = 0;
+		menuOption = 1;
+		startOption = 1;
+		pauseOption = 1;
+
+		InitMackenzie(mackenzie);
+		InitBullet(bullets, NUM_BULLETS);
+		InitEBullet(ebullets, NUM_EBULLETS);
+		InitEnemy(enemies, NUM_ENEMIES, levelEnemies, deadZone);
+		InitBrick(bricks, NUM_BRICKS, level, mackenzie);
+
+		mackenzie.x = WIDTH/2 - 100;
+		mackenzie.y = 60 + startOption*80;
+		drawStart(startOption, font64, font18, title);
+		DrawMackenzie(mackenzie, mackenziePic, mackenziePicCrouch, moonWalkerPic,  mapoffx, mackenzieWidth, mackenzieHeight, bullet_blast, bullets, michael);
+		al_flip_display();
+		al_clear_to_color(al_map_rgb(0,0,0));
+		mackenzie.onGround = true;
+
+		al_start_timer(timer);
+
+		while(startUpScreen){
+			al_wait_for_event(event_queue, &ev);
+			if(ev.type == ALLEGRO_EVENT_KEY_DOWN){
+				switch(ev.keyboard.keycode)
+				{
+				case ALLEGRO_KEY_UP:
+					if(!(startOption <= 1)){
+						startOption--;
+					}
+					break;
+				case ALLEGRO_KEY_DOWN:
+					if(!(startOption >= 4)){
+						startOption++;
+					}
+					break;
+				case ALLEGRO_KEY_ENTER:
+					startUpScreen = false;
+					break;
+				case ALLEGRO_KEY_SPACE:
+					startUpScreen = false;
+					break;
+				}
+			}
+			else if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
 			{
-			case ALLEGRO_KEY_UP:
-				JumpMackenzie(mackenzie);
-				keys[UP] = true;
-				break;
-			case ALLEGRO_KEY_DOWN:
-				keys[DOWN] = true;
-				break;
-			case ALLEGRO_KEY_LEFT:
-				keys[LEFT] = true;
-				break;
-			case ALLEGRO_KEY_RIGHT:
-				keys[RIGHT] = true;
-				break;
-			case ALLEGRO_KEY_SPACE:
-				keys[SPACE] = true;
-				FireBullet(bullets, NUM_BULLETS, mackenzie);
-				break;
-			case ALLEGRO_KEY_R:
-				mackenzie.x = 50;
-				mackenzie.y = 50;
-				mackenzie.vx = 0;
-				mackenzie.vy = 0;
-				break;
+				al_destroy_display(display);
+				al_destroy_sample(song);
+				return 0;
+			}
+			else if(ev.type == ALLEGRO_EVENT_TIMER)
+			{
+				redraw = true;
+			}
+			if(redraw && al_is_event_queue_empty(event_queue)){
+				redraw = false;
+				mackenzie.x = WIDTH/2 - 100;
+				mackenzie.y = 60 + startOption*80;
+				drawStart(startOption, font64, font18, title);
+				DrawMackenzie(mackenzie, mackenziePic, mackenziePicCrouch, moonWalkerPic,  mapoffx, mackenzieWidth, mackenzieHeight, bullet_blast, bullets, michael);
+				
+				al_flip_display();
+				al_clear_to_color(al_map_rgb(0,0,0));
 			}
 		}
-		else if(ev.type == ALLEGRO_EVENT_KEY_UP){
-			switch(ev.keyboard.keycode)
+
+		switch(startOption){
+		case 1:
+			newGame = true;
+			menuSelect = true;
+			break;
+		case 2:
+			newGame = false;
+			menuSelect = true;
+			break;
+		case 3:
+			credits = true;
+			break;
+		case 4:
+			exit(0);
+			break;
+		}
+		
+		while(credits){
+			al_wait_for_event(event_queue, &ev);
+
+			if(ev.type == ALLEGRO_EVENT_KEY_DOWN){
+				switch(ev.keyboard.keycode)
+				{
+				case ALLEGRO_KEY_ENTER:
+					credits = false;
+					startUpScreen = true;
+					menuSelect = false;
+					break;
+				case ALLEGRO_KEY_SPACE:
+					credits = false;
+					startUpScreen = true;
+					menuSelect = false;
+					break;
+				}
+			}
+			else if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
 			{
-			case ALLEGRO_KEY_UP:
-				keys[UP] = false;
-				break;
-			case ALLEGRO_KEY_DOWN:
-				keys[DOWN] = false;
-				break;
-			case ALLEGRO_KEY_LEFT:
-				keys[LEFT] = false;
-				break;
-			case ALLEGRO_KEY_RIGHT:
-				keys[RIGHT] = false;
-				break;
-			case ALLEGRO_KEY_SPACE:
-				keys[SPACE] = false;
-				break;
-			case ALLEGRO_KEY_ESCAPE:
-				done = true;
-				break;
+				al_destroy_display(display);
+				al_destroy_sample(song);
+				return 0;
+			}
+			else if(ev.type == ALLEGRO_EVENT_TIMER)
+			{
+				redraw = true;
+			}
+			if(redraw && al_is_event_queue_empty(event_queue)){
+				redraw = false;
+				drawCredits(font64, font18, title);
+				al_flip_display();
+				al_clear_to_color(al_map_rgb(0,0,0));
 			}
 		}
-		else if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+
+		mackenzie.x = WIDTH/2 - 135;
+		mackenzie.y = 60 + menuOption * 80;
+		drawMenu(menuOption, font64, font18, title);
+		DrawMackenzie(mackenzie, mackenziePic, mackenziePicCrouch, moonWalkerPic, mapoffx, mackenzieWidth, mackenzieHeight, bullet_blast, bullets, michael);
+		
+		al_flip_display();
+		al_clear_to_color(al_map_rgb(0, 0, 0));
+		mackenzie.onGround = true;
+
+		while(menuSelect){
+			al_wait_for_event(event_queue, &ev);
+
+			if(ev.type == ALLEGRO_EVENT_KEY_DOWN){
+				switch(ev.keyboard.keycode)
+				{
+				case ALLEGRO_KEY_UP:
+					if(!(menuOption <= 1)){
+						menuOption--;
+					}
+					break;
+				case ALLEGRO_KEY_DOWN:
+					if(!(menuOption >= 4)){
+						menuOption++;
+					}
+					break;
+				case ALLEGRO_KEY_ENTER:
+					menuSelect = false;
+					done = false;
+					break;
+				case ALLEGRO_KEY_SPACE:
+					menuSelect = false;
+					done = false;
+					break;
+				}
+			}
+			else if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+			{
+				al_destroy_display(display);
+				al_destroy_sample(song);
+				return 0;
+			}
+			else if(ev.type == ALLEGRO_EVENT_TIMER)
+			{
+				redraw = true;
+			}
+			if(redraw && al_is_event_queue_empty(event_queue)){
+				redraw = false;
+				mackenzie.x = WIDTH/2 - 135;
+				mackenzie.y = 60 + menuOption*80;
+				drawMenu(menuOption, font64, font18, title);
+				DrawMackenzie(mackenzie, mackenziePic, mackenziePicCrouch, moonWalkerPic, mapoffx, mackenzieWidth, mackenzieHeight, bullet_blast, bullets, michael);
+				al_flip_display();
+				al_clear_to_color(al_map_rgb(0,0,0));
+			}
+		}
+		
+		if(menuOption != 4){
+			unlocked = loadSave(menuOption, newGame);
+			redraw = true;
+			loadNewLevel = true;
+			level = "loadLevel.txt";
+			mackenzie.x = 64 + (unlocked - 1) * 192;
+			mackenzie.y = 394;
+			levelEnemies = " ";
+			levelBackground = "basicBackground.bmp";
+		}
+		else
 		{
 			done = true;
+			menuOption = false;
+			startUpScreen = true;
 		}
 
-		else if(ev.type == ALLEGRO_EVENT_TIMER)
+		while(!done)
 		{
-			redraw = true;
-			if(keys[DOWN])
-				MoveMackenzieDown(mackenzie);
-			if(keys[LEFT] && !keys[RIGHT])
-				MoveMackenzieLeft(mackenzie);
-			if(keys[RIGHT] && !keys[LEFT])
-				MoveMackenzieRight(mackenzie);
-		}
+			al_wait_for_event(event_queue, &ev);
+			if(loadNewLevel){
+				mackenzie.lives = 3;
+				InitEnemy(enemies, NUM_ENEMIES, levelEnemies, deadZone);
+				InitBrick(bricks, NUM_BRICKS, level, mackenzie);
+				InitBullet(bullets, NUM_BULLETS);
+				InitEBullet(ebullets, NUM_EBULLETS);
+				back = al_load_bitmap(levelBackground.c_str());
+				inCutscene = -1;
+				loadNewLevel = false;
 
-		if(redraw && (al_is_event_queue_empty(event_queue)))
-		{
-			redraw = false;
+				switch(currentLevel) {
 
-			//begin calculate and display fps timer
-			frames++;
-			currentTime = clock();
-			elapsedTime = currentTime - lastUpdateTime;
+				case 1:
+					al_destroy_sample(song);
+					song = al_load_sample("LevelStart.wav");
+					al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
+					break;
+	
+				case 2:
+					al_destroy_sample(song);
+					song = al_load_sample("LevelStart (Acoustic).wav");
+					al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
+					break;
+	
+				case 3:
+					al_destroy_sample(song);
+					song = al_load_sample("Somethings Amiss (Acoustic).wav");
+					al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
+					break;
+	
+				case 4:
+					al_destroy_sample(song);
+					song = al_load_sample("MacAttack (Acoustic).wav");
+					al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
+					break;
+	
+				case 5:
+					al_destroy_sample(song);
+					song = al_load_sample("Monstruous_Castle.wav");
+					al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
+					break;
+	
+				case 6:
+					al_destroy_sample(song);
+					song = al_load_sample("Somethings Amiss.wav");
+					al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
+					break;
+	
+				case 7:
+					al_destroy_sample(song);
+					song = al_load_sample("Somethings Amiss.wav");
+					al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
+					break;
+	
+				}
 
-			if(elapsedTime >= 200)
+			}
+
+			if (inCutscene == 0) {
+				if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_SPACE) {
+					keys[LEFT] = false;
+					keys[RIGHT] = false;
+					keys[UP] = false;
+					keys[DOWN] = false;
+					keys[SPACE] = false;
+					nextScenePage();
+				}
+				goto draw;
+			}
+
+			if(ev.type == ALLEGRO_EVENT_KEY_DOWN)
 			{
-				actualFPS = (frames * 1000 / elapsedTime);
-				frames = 0;
-				lastUpdateTime = currentTime;
+				switch(ev.keyboard.keycode)
+				{
+				case ALLEGRO_KEY_D:
+					if(debug){
+						debug = false;
+						michael = false;
+					}else{
+						debug = true;
+					}
+					break;
+
+				case ALLEGRO_KEY_L:
+					if(debug){
+						mackenzie.lives++;
+					}
+					break;
+				case ALLEGRO_KEY_M:
+					if(debug){
+						if(michael)
+						{
+							michael = false;
+						}
+						else
+						{
+							michael = true;
+						}
+						al_play_sample(moonWalkerSound, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+
+					}
+					break;
+
+				case ALLEGRO_KEY_UP:
+					if(!mackenzie.isCrouched){
+
+						JumpMackenzie(mackenzie, jumpSound);
+					}
+					keys[UP] = true;
+					break;
+				case ALLEGRO_KEY_DOWN:
+					keys[DOWN] = true;
+					if(mackenzie.onGround){// && mackenzie.timer < stun){
+						mackenzie.isCrouched = true;
+						mackenzie.y += 32;
+						mackenzie.x -= 14;
+					}
+					break;
+				case ALLEGRO_KEY_LEFT:
+					keys[LEFT] = true;
+					break;
+				case ALLEGRO_KEY_RIGHT:
+					keys[RIGHT] = true;
+					break;
+				case ALLEGRO_KEY_SPACE:
+					keys[SPACE] = true;
+					mackenzie.kicked = true;
+					FireBullet(bullets, NUM_BULLETS, mackenzie, gunShot);
+					break;
+				case ALLEGRO_KEY_R:
+					startUpScreen = true;
+					menuSelect = false;
+					done = true;
+					break;
+				case ALLEGRO_KEY_ENTER:
+					keys[ENTER] = true;
+					break;
+				case ALLEGRO_KEY_P:
+					pause = true;
+					break;
+				}
 			}
-			//end calculate and display fps timer
-
-
-			//start drawing and updating everything
-			UpdateBullet(bullets, NUM_BULLETS);
-			StartEnemy(enemies, NUM_ENEMIES);
-			UpdateEnemy(enemies, NUM_ENEMIES);
-			UpdateMackenzie(mackenzie);
-			CollideBullet(bullets, NUM_BULLETS, enemies, NUM_ENEMIES);
-			CollideEnemy(enemies, NUM_ENEMIES, mackenzie);
-			CollideBrick(bricks, NUM_BRICKS,  mackenzie);
-
-			al_draw_bitmap(back, WIDTH / 2 - imageWidth / 2, HEIGHT / 2 - imageHeight / 2, 0);
-			DrawBrick(bricks, NUM_BRICKS, platform);
-			DrawMackenzie(mackenzie, mackenziePic);
-			DrawBullet(bullets, NUM_BULLETS);
-			DrawEnemy(enemies, NUM_ENEMIES, ghost);
-			if(mackenzie.y > HEIGHT){
-				al_draw_textf(font64, al_map_rgb(255, 255, 255), 100, HEIGHT/2, 
-					0, "GAME OVER");
+			else if(ev.type == ALLEGRO_EVENT_KEY_UP){
+				switch(ev.keyboard.keycode)
+				{
+				case ALLEGRO_KEY_UP:
+					keys[UP] = false;
+					break;
+				case ALLEGRO_KEY_DOWN:
+					keys[DOWN] = false;
+					if(mackenzie.isCrouched){
+						mackenzie.isCrouched = false;
+						mackenzie.y -= 32;
+						mackenzie.x += 14;
+					}
+					break;
+				case ALLEGRO_KEY_LEFT:
+					keys[LEFT] = false;
+					break;
+				case ALLEGRO_KEY_RIGHT:
+					keys[RIGHT] = false;
+					break;
+				case ALLEGRO_KEY_SPACE:
+					keys[SPACE] = false;
+					break;
+				case ALLEGRO_KEY_ESCAPE:
+					exit(0);
+					break;
+				case ALLEGRO_KEY_ENTER:
+					keys[ENTER] = false;
+					break;
+				}
 			}
-			al_draw_textf(font18, al_map_rgb(255, 255, 255), WIDTH, 0, 
-				ALLEGRO_ALIGN_RIGHT, "FPS : %i", actualFPS);
-			al_flip_display();
-			al_clear_to_color(al_map_rgb(0,0,0));
-			//end drawing and updating everything
+			else if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+			{
+				al_destroy_display(display);
+				al_destroy_sample(song);
+				return 0;
+			}
+
+			else if(ev.type == ALLEGRO_EVENT_TIMER)
+			{
+				redraw = true;
+				if(keys[DOWN])
+					MoveMackenzieDown(mackenzie);
+				if(keys[LEFT] && !keys[RIGHT])
+					MoveMackenzieLeft(mackenzie);
+				if(keys[RIGHT] && !keys[LEFT])
+					MoveMackenzieRight(mackenzie);
+			}
+			while(pause){
+				al_wait_for_event(event_queue, &ev);
+
+				if(ev.type == ALLEGRO_EVENT_KEY_DOWN){
+					switch(ev.keyboard.keycode)
+					{
+					case ALLEGRO_KEY_UP:
+						keys[UP] = true;
+						if(!(pauseOption <= 1)){
+							pauseOption--;
+						}
+						break;
+					case ALLEGRO_KEY_DOWN:
+						keys[DOWN] = true;
+						if(!(pauseOption >= 4)){
+							pauseOption++;
+						}
+						break;
+					case ALLEGRO_KEY_RIGHT:
+						keys[RIGHT] = true;
+						break;
+					case ALLEGRO_KEY_LEFT:
+						keys[LEFT] = true;
+						break;
+					case ALLEGRO_KEY_ENTER:
+						switch(pauseOption){
+						case 1:
+							pause = false;
+							break;
+						case 2:
+							loadNewLevel = true;
+							redraw = true;
+							level = "loadLevel.txt";
+							mackenzie.x = 64 + (unlocked - 1) * 192;
+							mackenzie.y = 394;
+							mackenzie.vx = 0;
+							mackenzie.vy = 0;
+							levelEnemies = " ";
+							levelBackground = "basicBackground.bmp";
+							pause = false;
+							break;
+						case 3:
+							startUpScreen = true;
+							done = true;
+							pause = false;
+							break;
+						case 4:
+							exit(0);
+						}
+						break;
+					case ALLEGRO_KEY_P:
+						pause = false;
+						break;
+					}
+				}
+				else if(ev.type == ALLEGRO_EVENT_KEY_UP){
+					switch(ev.keyboard.keycode)
+					{
+					case ALLEGRO_KEY_UP:
+						keys[UP] = false;
+						break;
+					case ALLEGRO_KEY_DOWN:
+						keys[DOWN] = false;
+						if(mackenzie.isCrouched){
+							mackenzie.isCrouched = false;
+							mackenzie.y -= 32;
+							mackenzie.x += 14;
+						}
+						break;
+					case ALLEGRO_KEY_LEFT:
+						keys[LEFT] = false;
+						break;
+					case ALLEGRO_KEY_RIGHT:
+						keys[RIGHT] = false;
+						break;
+					case ALLEGRO_KEY_SPACE:
+						keys[SPACE] = false;
+						break;
+					case ALLEGRO_KEY_ENTER:
+						keys[ENTER] = false;
+						break;
+					}
+				}
+				else if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
+				{
+					al_destroy_display(display);
+					al_destroy_sample(song);
+					return 0;
+				}
+				else if(ev.type == ALLEGRO_EVENT_TIMER)
+				{
+					redraw = true;
+				}
+				if(redraw && al_is_event_queue_empty(event_queue)){
+					redraw = false;
+					DrawBackground(back, bricks, NUM_BRICKS, mapoffx);
+					DrawMackenzie(mackenzie, mackenziePic, mackenziePicCrouch, moonWalkerPic, mapoffx, mackenzieWidth, mackenzieHeight, bullet_blast, bullets, michael);
+					DrawBullet(bullets, NUM_BULLETS, mapoffx);
+					DrawEnemy(enemies, NUM_ENEMIES, ghost, mapoffx, bomb, boss, bossgrumpy,  fish, currentLevel);
+					DrawEBullet(ebullets, NUM_EBULLETS, mapoffx, lightning);
+					DrawBrick(bricks, NUM_BRICKS, platform, spring, mapoffx, jump_pickup, font32, unlocked,	eyeball, mackenzie, seaweed);
+					drawPause(pauseOption, font18);
+					al_flip_display();
+					al_clear_to_color(al_map_rgb(0,0,0));
+				}
+			}
+			if(redraw && (al_is_event_queue_empty(event_queue)))
+			{
+				redraw = false;
+
+				//begin calculate and display fps timer
+				frames++;
+				currentTime = clock();
+				elapsedTime = currentTime - lastUpdateTime;
+
+				if(elapsedTime >= 500)
+				{
+					actualFPS = (frames * 1000 / elapsedTime);
+					frames = 0;
+					lastUpdateTime = currentTime;
+					UpdateBrick(bricks, NUM_BRICKS, mapoffx, ebullets, NUM_EBULLETS, mackenzie);
+					if(!(mackenzie.timer <= 0)){
+						mackenzie.timer--;
+					}
+				}
+				//end calculate and display fps timer
+
+				//start drawing and updating everything
+				if(mackenzie.lives > 0){
+				UpdateBullet(bullets, NUM_BULLETS, mapoffx);
+				StartEnemy(enemies, NUM_ENEMIES, mapoffx, ebullets, NUM_EBULLETS, mackenzie, font64, bricks, NUM_BRICKS);
+				UpdateMackenzie(mackenzie, mapoffx, deadZone);
+				UpdateEBullet(ebullets, NUM_EBULLETS, mapoffx);
+				CollideBullet(bullets, NUM_BULLETS, enemies, NUM_ENEMIES, bricks, NUM_BRICKS, ghost_death, explosion);
+				CollideEBullet(ebullets, NUM_EBULLETS, mackenzie, bricks, NUM_BRICKS, mackenzie_hit);
+				CollideBrick(bricks, NUM_BRICKS,  mackenzie, unlocked, powerup, currentLevel, menuOption);
+				CollideEnemy(enemies, NUM_ENEMIES, mackenzie, ghost_death, mackenzie_hit);
+				}
+				draw:
+				DrawBackground(back, bricks, NUM_BRICKS, mapoffx);
+				DrawMackenzie(mackenzie, mackenziePic, mackenziePicCrouch, moonWalkerPic, mapoffx, mackenzieWidth, mackenzieHeight, bullet_blast, bullets, michael);
+				DrawBullet(bullets, NUM_BULLETS, mapoffx);
+				DrawEnemy(enemies, NUM_ENEMIES, ghost, mapoffx, bomb, boss, bossgrumpy, fish, currentLevel);
+				DrawBrick(bricks, NUM_BRICKS, platform, spring, mapoffx, jump_pickup, font32, unlocked,
+					eyeball, mackenzie, seaweed);
+				DrawEBullet(ebullets, NUM_EBULLETS, mapoffx, lightning);
+				if(mackenzie.lives <= 0){
+					dead = true;
+					al_draw_textf(font64, al_map_rgb(rand()%255, rand()%255, rand()%255), 0 + rand()%300, 50 + rand()%(HEIGHT-150), 
+						0, "GAME OVER");
+					al_draw_text(font64, al_map_rgb(255, 255, 255), 130, HEIGHT-70, 0, "Press [P] to Pause");
+					al_rest(.5);
+				}
+
+				if(dead){
+					if(needPlayDeath){
+						al_destroy_sample(song);
+						song = al_load_sample("MacDeath.wav");
+						al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+						needPlayDeath = false;
+					}
+				}
+
+				if(mackenzie.y > HEIGHT + 100){
+					mackenzie.lives = 0;
+				}
+				if (cutline != "") {
+					al_draw_filled_rounded_rectangle(0, HEIGHT - 80, WIDTH, HEIGHT, 10, 10, al_map_rgb(0,0,0));
+					al_draw_textf(font18, al_map_rgb(255, 255, 255), 20, HEIGHT - 50, 0, "%s", cutline.c_str());
+				}
+				al_draw_textf(font18, al_map_rgb(255, 255, 255), WIDTH, 0, 
+					ALLEGRO_ALIGN_RIGHT, "FPS : %i", actualFPS);
+
+				if(debug){
+					al_draw_textf(font18, al_map_rgb(255, 255, 255), WIDTH, HEIGHT/2, ALLEGRO_ALIGN_RIGHT, "DEBUG");
+				}
+
+				int offset = 40;
+				for(int i = 0; i < mackenzie.lives; i++){
+					al_draw_bitmap(heel, 10 + offset * i, 10, 0);
+				}
+				al_flip_display();
+				al_clear_to_color(al_map_rgb(0,0,0));
+				//end drawing and updating everything
+			}
 		}
 	}
-
-
 	al_destroy_display(display);
+	al_destroy_sample(song);
+
 	return 0;
 
+}
+
+void drawCredits(ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title){
+	al_draw_bitmap(title, 0, 0, 0);
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 162, 
+		ALLEGRO_ALIGN_CENTER, "Programming:   Brandon Tom, Nathan Jarvis");
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 242, 
+		ALLEGRO_ALIGN_CENTER, "Art & Animation:   Peter Samyn, Brandon Tom, Nathan Jarvis");
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 322, 
+		ALLEGRO_ALIGN_CENTER, "Story & Cutscenes:   Katie Greenwald");
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 402, 
+		ALLEGRO_ALIGN_CENTER, "Music & Sound:   Joe Bota, Peter Samyn, Chris Lui");
+}
+
+void drawPause(int pauseOption, ALLEGRO_FONT *size18){
+	al_draw_filled_rectangle(0, 0, 854, 480, al_map_rgba_f(0, 0, 0, .5));
+	al_draw_filled_rounded_rectangle(250, 82, 604, 330, 5, 5, al_map_rgba_f(0, 0, 0, .75));
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2-120, 82 + pauseOption * 50, 0 , "---");
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 132, 
+		ALLEGRO_ALIGN_CENTER, "Return to Game");
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 182, 
+		ALLEGRO_ALIGN_CENTER, "Return to Level Select");
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 232, 
+		ALLEGRO_ALIGN_CENTER, "Return to Start Menu");
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 282, 
+		ALLEGRO_ALIGN_CENTER, "Exit Game");
+}
+void drawMenu(int menuOption, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title){
+	al_draw_bitmap(title, 0, 0, 0);
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 162, 
+		ALLEGRO_ALIGN_CENTER, "Save Slot 1   Level: %i", loadSave(1, false));
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 242, 
+		ALLEGRO_ALIGN_CENTER, "Save Slot 2   Level: %i", loadSave(2, false));
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 322, 
+		ALLEGRO_ALIGN_CENTER, "Save Slot 3   Level: %i", loadSave(3, false));
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 402, 
+		ALLEGRO_ALIGN_CENTER, "Back");
+}
+void drawStart(int startOption, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title){
+	al_draw_bitmap(title, 0, 0, 0);
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 162, 
+		ALLEGRO_ALIGN_CENTER, "New Game");
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 242, 
+		ALLEGRO_ALIGN_CENTER, "Load Game");
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 322, 
+		ALLEGRO_ALIGN_CENTER, "Credits");
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 402, 
+		ALLEGRO_ALIGN_CENTER, "Exit");
+}
+
+int loadSave(int menuOption, bool newGame){
+	string line;
+	string save;
+	int value = 0;
+	if(menuOption == 1){
+		save = "save1.txt";
+	}
+	else if(menuOption == 2){
+		save = "save2.txt";
+	}
+	else if(menuOption == 3){
+		save = "save3.txt";
+	}
+	if(newGame){
+		ofstream file (save);
+		if(file.is_open()){
+			file << "1";
+		}
+	}
+	ifstream file (save);
+	if (file.is_open())
+	{
+		while (file.good() && !file.eof())
+		{
+			getline (file, line);
+		}
+		file.close();
+	}
+	value = atoi(line.c_str());
+	return value;
 }
 
 void InitMackenzie(Mackenzie &mackenzie){
 	mackenzie.x = 50;
 	mackenzie.y = 50;
 	mackenzie.ID = PLAYER;
-	mackenzie.lives = 5;
+	mackenzie.lives = 3;
 	mackenzie.vx = 0;
 	mackenzie.vy = 0;
 	mackenzie.acc = .075;
@@ -254,41 +941,439 @@ void InitMackenzie(Mackenzie &mackenzie){
 	mackenzie.boundDown = 64;
 	mackenzie.score = 0;
 	mackenzie.onGround = false;
-	mackenzie.score = 0;
+	mackenzie.isCrouched = false;
+	mackenzie.invincible = false;
+	mackenzie.timer = 0;
+	mackenzie.isFacingRight = true;
+	mackenzie.jumped = false;
+	mackenzie.kicked = false;
 }
-void DrawMackenzie(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic){
-	al_draw_bitmap(mackenziePic, mackenzie.x-1, mackenzie.y-1, 0);
+void DrawMackenzie(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, ALLEGRO_BITMAP *mackenziePicCrouch, ALLEGRO_BITMAP *moonWalkerPic, int &mapoffx, int mackenzieWidth, int mackenzieHeight, ALLEGRO_BITMAP *bullet_blast, Bullet bullets[], bool michael){
+	if(mackenzie.kicked && mackenzie.timer < stun)
+	{
+		DrawKick(mackenzie, mackenziePic, mackenziePicCrouch, mackenzieWidth, mackenzieHeight, bullet_blast, bullets, mapoffx);
+	}
+	else if(mackenzie.jumped)
+	{
+		DrawJump(mackenzie, mackenziePic, mackenzieWidth, mackenzieHeight, mapoffx);
+	}
+
+	else if(keys[RIGHT] && keys[LEFT])
+	{
+		if(michael)
+		{
+
+			DrawMoonWalker(mackenzie, moonWalkerPic, mackenziePicCrouch, mackenzieWidth, mackenzieHeight, mapoffx);
+		}
+		else
+		{
+
+			if(!(mackenzie.vy != 0))
+			{
+				DrawRunRight(mackenzie, mackenziePic, mackenziePicCrouch, mackenzieWidth, mackenzieHeight, mapoffx);
+			}
+			else
+			{
+				DrawInAir(mackenzie, mackenziePic, mackenzieWidth, mackenzieHeight, mapoffx);
+			}
+
+		}
+
+	}
+
+	else if(keys[RIGHT]) 
+	{
+		if(!(mackenzie.vy != 0))
+		{
+			DrawRunRight(mackenzie, mackenziePic, mackenziePicCrouch, mackenzieWidth, mackenzieHeight, mapoffx);
+		}
+		else
+		{
+			DrawInAir(mackenzie, mackenziePic, mackenzieWidth, mackenzieHeight, mapoffx);
+		}
+	}
+	else if(keys[LEFT])
+	{
+		if(!(mackenzie.vy != 0))
+		{
+			DrawRunLeft(mackenzie, mackenziePic, mackenziePicCrouch, mackenzieWidth, mackenzieHeight, mapoffx);
+		}
+		else
+		{
+			DrawInAir(mackenzie, mackenziePic, mackenzieWidth, mackenzieHeight, mapoffx);
+		}
+
+	}
+	else if(mackenzie.isCrouched)
+	{
+		if(mackenzie.isFacingRight)
+		{
+			if(mackenzie.timer != 0)
+			{
+				al_draw_tinted_bitmap_region(mackenziePicCrouch, al_map_rgba_f(.6, .6, .6, .3), 0, 0, mackenzieHeight, mackenzieWidth, mackenzie.x - 1-mapoffx, mackenzie.y, 0);
+			}
+			else{
+				al_draw_bitmap_region(mackenziePicCrouch, 0, 0, mackenzieHeight, mackenzieWidth, mackenzie.x - 1-mapoffx, mackenzie.y, 0);
+			}
+		}
+		else
+		{
+			if(mackenzie.timer != 0)
+			{
+				al_draw_tinted_bitmap_region(mackenziePicCrouch, al_map_rgba_f(.6, .6, .6, .3), 0, 0, mackenzieHeight, mackenzieWidth, mackenzie.x - 1-mapoffx, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+			}
+			else{
+				al_draw_bitmap_region(mackenziePicCrouch, 0, 0, mackenzieHeight, mackenzieWidth, mackenzie.x - 1-mapoffx, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+			}
+		}
+	}
+	else
+	{
+
+		DrawIdle(mackenzie, mackenziePic, mackenzieWidth, mackenzieHeight, mapoffx);
+
+	}
+
+	frameDelayIncrementer();
 }
-void JumpMackenzie(Mackenzie &mackenzie){
-	if(mackenzie.onGround && !(mackenzie.vy > 0)){
-		mackenzie.vy = -6.5;
-		mackenzie.onGround = false;
+void DrawRunRight(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, ALLEGRO_BITMAP *mackenziePicCrouch, int mackenzieWidth, int mackenzieHeight, int &mapoffx){
+	if(currentFrame > 7)
+	{
+		currentFrame = 0;
+	}
+	if(mackenzie.timer != 0)
+	{
+		if(mackenzie.isCrouched)
+		{
+			al_draw_tinted_bitmap_region(mackenziePicCrouch, al_map_rgba_f(.6, .6, .6, .3), currentFrame * mackenzieHeight, 0, mackenzieHeight, mackenzieWidth, mackenzie.x - 1-mapoffx, mackenzie.y, 0);
+		}
+		else
+		{
+			al_draw_tinted_bitmap_region(mackenziePic, al_map_rgba_f(.6, .6, .6, .3), currentFrame * mackenzieWidth, 0, mackenzieWidth, mackenzieHeight, mackenzie.x - 1-mapoffx, mackenzie.y, 0);
+		}
+	}
+	else
+	{
+		if(mackenzie.isCrouched)
+		{
+			al_draw_bitmap_region(mackenziePicCrouch, currentFrame * mackenzieHeight, 0, mackenzieHeight, mackenzieWidth, mackenzie.x - 1-mapoffx, mackenzie.y, 0);
+		}
+		else
+		{
+			al_draw_bitmap_region(mackenziePic, currentFrame * mackenzieWidth, 0, mackenzieWidth, mackenzieHeight, mackenzie.x - 1-mapoffx, mackenzie.y, 0);
+		}
+	}
+	if(frameDelayCount == 0){
+		currentFrame++;
+		if(currentFrame == numRunFrames){
+			currentFrame = 0;
+		}
+	}
+}
+
+void DrawMoonWalker(Mackenzie &mackenzie, ALLEGRO_BITMAP *moonWalkerPic, ALLEGRO_BITMAP *mackenziePicCrouch, int mackenzieWidth, int mackenzieHeight, int &mapoffx){
+	if(currentFrame > 5)
+	{
+		currentFrame = 0;
+	}
+	if(mackenzie.timer != 0)
+	{
+		if(mackenzie.isCrouched)
+		{
+			al_draw_tinted_bitmap_region(mackenziePicCrouch, al_map_rgba_f(.6, .6, .6, .3), currentFrame * mackenzieHeight, 0, mackenzieHeight, mackenzieWidth, mackenzie.x - 1-mapoffx, mackenzie.y, 0);
+		}
+		else
+		{
+			al_draw_tinted_bitmap_region(moonWalkerPic, al_map_rgba_f(.6, .6, .6, .3), currentFrame * mackenzieWidth, 0, mackenzieWidth, mackenzieHeight, mackenzie.x - 1-mapoffx, mackenzie.y, 0);
+		}
+	}
+	else
+	{
+		if(mackenzie.isCrouched)
+		{
+			al_draw_bitmap_region(mackenziePicCrouch, currentFrame * mackenzieHeight, 0, mackenzieHeight, mackenzieWidth, mackenzie.x - 1-mapoffx, mackenzie.y, 0);
+		}
+		else
+		{
+			al_draw_bitmap_region(moonWalkerPic, currentFrame * mackenzieWidth, 0, mackenzieWidth, mackenzieHeight, mackenzie.x - 1-mapoffx, mackenzie.y, 0);
+		}
+	}
+	if(frameDelayCount == 0){
+		currentFrame++;
+		if(currentFrame == numRunFrames){
+			currentFrame = 0;
+		}
+	}
+}
+void DrawRunLeft(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, ALLEGRO_BITMAP *mackenziePicCrouch, int mackenzieWidth, int mackenzieHeight, int &mapoffx){
+	if(currentFrame > 7)
+	{
+		currentFrame = 0;
+	}
+	if(mackenzie.timer != 0)
+	{
+		if(mackenzie.isCrouched)
+		{
+			al_draw_tinted_bitmap_region(mackenziePicCrouch, al_map_rgba_f(.6, .6, .6, .3), currentFrame * mackenzieHeight, 0, mackenzieHeight, mackenzieWidth, mackenzie.x - 1-mapoffx, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+		}
+		else
+		{
+
+			al_draw_tinted_bitmap_region(mackenziePic, al_map_rgba_f(.6, .6, .6, .3), currentFrame * mackenzieWidth, 0, mackenzieWidth, mackenzieHeight, mackenzie.x - 1-mapoffx, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+		}
+	}
+	else
+	{
+		if(mackenzie.isCrouched)
+		{
+			al_draw_bitmap_region(mackenziePicCrouch, currentFrame * mackenzieHeight, 0, mackenzieHeight, mackenzieWidth, mackenzie.x - 1-mapoffx, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+		}
+		else
+		{
+			al_draw_bitmap_region(mackenziePic, currentFrame * mackenzieWidth, 0, mackenzieWidth, mackenzieHeight, mackenzie.x - 1-mapoffx, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+		}
+
+	}
+	if(frameDelayCount == 0){
+		currentFrame++;
+		if(currentFrame == numRunFrames){
+			currentFrame = 0;
+		}
+	}
+}
+void DrawInAir(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, int mackenzieWidth, int mackenzieHeight, int &mapoffx){
+	if(keys[RIGHT])
+	{
+		if(mackenzie.timer != 0){
+			al_draw_tinted_bitmap_region(mackenziePic, al_map_rgba_f(.6, .6, .6, .3), 7 * mackenzieWidth, mackenzieHeight, mackenzieWidth, mackenzieHeight, mackenzie.x - 1-mapoffx, mackenzie.y, 0);
+		}
+		else{
+			al_draw_bitmap_region(mackenziePic, 7 * mackenzieWidth, mackenzieHeight, mackenzieWidth, mackenzieHeight, mackenzie.x - 1-mapoffx, mackenzie.y, 0);
+		}
+	}
+	else
+	{
+		if(mackenzie.timer != 0){
+			al_draw_tinted_bitmap_region(mackenziePic, al_map_rgba_f(.6, .6, .6, .3), 7 * mackenzieWidth, mackenzieHeight, mackenzieWidth, mackenzieHeight, mackenzie.x - 1-mapoffx, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+		}
+		else{
+			al_draw_bitmap_region(mackenziePic, 7 * mackenzieWidth, mackenzieHeight, mackenzieWidth, mackenzieHeight, mackenzie.x - 1-mapoffx, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+		}
+	}
+}
+void DrawIdle(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, int mackenzieWidth, int mackenzieHeight, int &mapoffx){
+	if(currentFrame  > (numKickIdleFrames-1) * 3)
+	{
+		currentFrame = 0;
+	}
+	if(mackenzie.isFacingRight)
+	{
+		if(mackenzie.timer != 0){
+			al_draw_tinted_bitmap_region(mackenziePic, al_map_rgba_f(.6, .6, .6, .3), currentFrame/3 * mackenzieWidth, mackenzieHeight * 2, mackenzieWidth, mackenzieHeight, mackenzie.x -mapoffx- 1, mackenzie.y, 0);
+		}
+		else{
+			al_draw_bitmap_region(mackenziePic, currentFrame/3 * mackenzieWidth, mackenzieHeight * 2, mackenzieWidth, mackenzieHeight, mackenzie.x -mapoffx- 1, mackenzie.y, 0);
+		}
+	}
+	else{
+		if(mackenzie.timer != 0){
+			al_draw_tinted_bitmap_region(mackenziePic, al_map_rgba_f(.6, .6, .6, .3), currentFrame/3 * mackenzieWidth, mackenzieHeight * 2, mackenzieWidth, mackenzieHeight, mackenzie.x -mapoffx- 1, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+		}
+		else{
+			al_draw_bitmap_region(mackenziePic, currentFrame/3 * mackenzieWidth, mackenzieHeight * 2, mackenzieWidth, mackenzieHeight, mackenzie.x -mapoffx- 1, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+		}
+	}
+	if(frameDelayCount == 0)
+	{
+		currentFrame++;
+		if(currentFrame == numKickIdleFrames * 3)
+		{
+			currentFrame = 0;
+		}
+	}
+}
+void DrawJump(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, int mackenzieWidth, int mackenzieHeight, int &mapoffx){
+	if(currentFrame > 3)
+	{
+		currentFrame = 0;
+	}
+
+	if(mackenzie.isFacingRight)
+	{
+		if(mackenzie.timer != 0){
+			al_draw_tinted_bitmap_region(mackenziePic, al_map_rgba_f(.6, .6, .6, .3), (currentFrame * mackenzieWidth) + 128, mackenzieHeight, mackenzieWidth, mackenzieHeight, mackenzie.x -mapoffx- 1, mackenzie.y, 0);
+		}
+		else{
+			al_draw_bitmap_region(mackenziePic, (currentFrame * mackenzieWidth) + 128, mackenzieHeight, mackenzieWidth, mackenzieHeight, mackenzie.x -mapoffx- 1, mackenzie.y, 0);
+		}
+	}
+	else
+	{
+		if(mackenzie.timer != 0){
+			al_draw_tinted_bitmap_region(mackenziePic, al_map_rgba_f(.6, .6, .6, .3), (currentFrame * mackenzieWidth) + 128, mackenzieHeight, mackenzieWidth, mackenzieHeight, mackenzie.x -mapoffx- 1, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+		}
+		else{
+			al_draw_bitmap_region(mackenziePic, (currentFrame * mackenzieWidth) + 128, mackenzieHeight, mackenzieWidth, mackenzieHeight, mackenzie.x -mapoffx- 1, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+		}
+	}
+	if(frameDelayCount == 0)
+	{
+		currentFrame++;
+		if(currentFrame == 4)
+		{
+			currentFrame = 0;
+			mackenzie.jumped = false;
+		}
+	}
+}
+void DrawKick(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, ALLEGRO_BITMAP *mackenziePicCrouch, int mackenzieWidth, int mackenzieHeight, ALLEGRO_BITMAP *bullet_blast, Bullet bullets[], int &mapoffx){
+
+	if(currentFrame > 1)
+	{
+		currentFrame = 0;
+	}
+
+	if(mackenzie.isFacingRight)
+	{
+		if(mackenzie.timer != 0){
+			//al_draw_tinted_bitmap_region(mackenziePic, al_map_rgba_f(.6, .6, .6, .3), mackenzieWidth, mackenzieHeight, mackenzieWidth, mackenzieHeight, mackenzie.x -mapoffx- 1, mackenzie.y, 0);
+
+			if(mackenzie.isCrouched)
+			{
+				al_draw_tinted_bitmap_region(mackenziePicCrouch, al_map_rgba_f(.6, .6, .6, .3), 0, mackenzieWidth, mackenzieHeight, mackenzieWidth, mackenzie.x -mapoffx- 1, mackenzie.y, 0);
+				al_draw_bitmap(bullet_blast, mackenzie.x + 45-mapoffx, mackenzie.y + 4, 0);
+			}
+			else
+			{
+				al_draw_tinted_bitmap_region(mackenziePic, al_map_rgba_f(.6, .6, .6, .3), mackenzieWidth, mackenzieHeight, mackenzieWidth, mackenzieHeight, mackenzie.x -mapoffx- 1, mackenzie.y, 0);
+				al_draw_bitmap(bullet_blast, mackenzie.x + 24-mapoffx, mackenzie.y + 28, 0);
+			}
+
+		}
+		else
+		{
+			if(mackenzie.isCrouched)
+			{
+				al_draw_bitmap_region(mackenziePicCrouch, 0, mackenzieWidth, mackenzieHeight, mackenzieWidth, mackenzie.x -mapoffx- 1, mackenzie.y, 0);
+				al_draw_bitmap(bullet_blast, mackenzie.x + 45-mapoffx, mackenzie.y + 4, 0);
+			}
+			else
+			{
+				al_draw_bitmap_region(mackenziePic, mackenzieWidth, mackenzieHeight, mackenzieWidth, mackenzieHeight, mackenzie.x -mapoffx- 1, mackenzie.y, 0);
+				al_draw_bitmap(bullet_blast, mackenzie.x + 24-mapoffx, mackenzie.y + 28, 0);
+			}
+
+		}
+
+	}
+	else
+	{
+		if(mackenzie.timer != 0)
+		{
+			
+			if(mackenzie.isCrouched)
+			{
+				al_draw_tinted_bitmap_region(mackenziePicCrouch, al_map_rgba_f(.6, .6, .6, .3), 0, mackenzieWidth, mackenzieHeight, mackenzieWidth, mackenzie.x -mapoffx- 1, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+				al_draw_bitmap(bullet_blast, mackenzie.x - 16-mapoffx, mackenzie.y + 4, ALLEGRO_FLIP_HORIZONTAL);
+			}
+			else
+			{
+				al_draw_tinted_bitmap_region(mackenziePic, al_map_rgba_f(.6, .6, .6, .3), mackenzieWidth, mackenzieHeight, mackenzieWidth, mackenzieHeight, mackenzie.x -mapoffx- 1, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+				al_draw_bitmap(bullet_blast, mackenzie.x - 26-mapoffx, mackenzie.y + 28, ALLEGRO_FLIP_HORIZONTAL);
+			}
+
+		}
+		else
+		{
+			
+			if(mackenzie.isCrouched)
+			{
+				al_draw_bitmap_region(mackenziePicCrouch, 0, mackenzieWidth, mackenzieHeight, mackenzieWidth, mackenzie.x -mapoffx- 1, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+				al_draw_bitmap(bullet_blast, mackenzie.x - 16-mapoffx, mackenzie.y + 4, ALLEGRO_FLIP_HORIZONTAL);
+			}
+			else
+			{
+				al_draw_bitmap_region(mackenziePic, mackenzieWidth, mackenzieHeight, mackenzieWidth, mackenzieHeight, mackenzie.x -mapoffx- 1, mackenzie.y, ALLEGRO_FLIP_HORIZONTAL);
+				al_draw_bitmap(bullet_blast, mackenzie.x - 26-mapoffx, mackenzie.y + 28, ALLEGRO_FLIP_HORIZONTAL);
+			}
+
+		}
+	}
+
+	if(frameDelayCount == 0)
+	{
+		currentFrame++;
+		if(currentFrame > 1)
+		{
+			currentFrame = 0;
+			mackenzie.kicked = false;
+		}
+	}
+}
+
+void JumpMackenzie(Mackenzie &mackenzie, ALLEGRO_SAMPLE *jumpSound){
+	if(mackenzie.timer < stun){
+		if(mackenzie.onGround || mackenzie.extraJump){
+			al_play_sample(jumpSound, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+			mackenzie.vy = -6.5;
+			mackenzie.onGround = false;
+			mackenzie.extraJump = false;
+			mackenzie.jumped = true;
+
+		}
 	}
 }
 void MoveMackenzieDown(Mackenzie &mackenzie){
-	//to be implemented
 }
 void MoveMackenzieLeft(Mackenzie &mackenzie){
-	if(mackenzie.vx > 0){
-		mackenzie.vx -= mackenzie.dec;
+	if(mackenzie.timer < stun){
+		mackenzie.isFacingRight = false;
+		if(mackenzie.isCrouched){
+			mackenzie.vx = -1.3;
+		}
+		else{
+			if(mackenzie.vx > 0){
+				mackenzie.vx -= mackenzie.dec;
+			}
+			else if(mackenzie.vx > -mackenzie.maxSpeed){
+				mackenzie.vx -= mackenzie.acc;
+			}
+			else
+				mackenzie.vx = -mackenzie.maxSpeed;
+		}
 	}
-	else if(mackenzie.vx > -mackenzie.maxSpeed){
-		mackenzie.vx -= mackenzie.acc;
-	}
-	else
-		mackenzie.vx = -mackenzie.maxSpeed;
 }
 void MoveMackenzieRight(Mackenzie &mackenzie){
-	if(mackenzie.vx < 0){
-		mackenzie.vx += mackenzie.dec;
+	if(mackenzie.timer < stun){
+		mackenzie.isFacingRight = true;
+		if(mackenzie.isCrouched){
+			mackenzie.vx = 1.3;
+		}
+		else{
+			if(mackenzie.vx < 0){
+				mackenzie.vx += mackenzie.dec;
+			}
+			else if(mackenzie.vx < mackenzie.maxSpeed){
+				mackenzie.vx += mackenzie.acc;
+			}
+			else
+				mackenzie.vx = mackenzie.maxSpeed;
+		}
 	}
-	else if(mackenzie.vx < mackenzie.maxSpeed){
-		mackenzie.vx += mackenzie.acc;
-	}
-	else
-		mackenzie.vx = mackenzie.maxSpeed;
 }
-void UpdateMackenzie(Mackenzie &mackenzie){
+void UpdateMackenzie(Mackenzie &mackenzie, int &mapoffx, int deadZone){
+	if(mackenzie.isCrouched){
+		mackenzie.boundDown = 32;
+		mackenzie.boundRight = 64;
+	}
+	else{
+		mackenzie.boundDown = 64;
+		mackenzie.boundRight = 32;
+	}
+
+	if(mackenzie.timer == 0){
+		mackenzie.invincible = false;
+	}
 
 	//can jump at different heights if release up earlier
 	if(!keys[UP] && mackenzie.vy < -4)
@@ -310,10 +1395,26 @@ void UpdateMackenzie(Mackenzie &mackenzie){
 	if(mackenzie.vx < mackenzie.acc && mackenzie.vx > -mackenzie.acc)
 		mackenzie.vx = 0;
 
+	if(keys[RIGHT] && keys[LEFT]){
+		mackenzie.vx = -2;
+	}
+
 	mackenzie.x += mackenzie.vx;
 	mackenzie.y += mackenzie.vy;
+	if((mackenzie.x - mapoffx) > WIDTH-deadZone){
+		mapoffx = mackenzie.x - (WIDTH-deadZone);
+	}
+	else if((mackenzie.x - mapoffx) < deadZone)
+	{
+		mapoffx = mackenzie.x - deadZone;
+	}
+	if(mapoffx < 0){
+		mapoffx = 0;
+	}
+	if(mackenzie.x < 0){
+		mackenzie.x = 0;
+	}
 }
-
 
 void InitBullet(Bullet bullets[], int size){
 	for(int i = 0; i < size; i++)
@@ -323,33 +1424,74 @@ void InitBullet(Bullet bullets[], int size){
 		bullets[i].live = false;
 	}
 }
-void DrawBullet(Bullet bullets[], int size){
+void DrawBullet(Bullet bullets[], int size, int &mapoffx){
 	for(int i = 0; i < size; i++){
 		if(bullets[i].live){
-			al_draw_filled_circle(bullets[i].x, bullets[i].y, 2, al_map_rgb(255, 255, 255));
+			al_draw_filled_circle(bullets[i].x - mapoffx, bullets[i].y, 2, al_map_rgb(255, 255, 255));
 		}
 	}
 }
-void FireBullet(Bullet bullets[], int size, Mackenzie &mackenzie){
-	for(int i = 0; i < size; i++){
-		if(!bullets[i].live){
-			bullets[i].x = mackenzie.x + 42;
-			bullets[i].y = mackenzie.y + 20;
-			bullets[i].live = true;
-			break;
+void FireBullet(Bullet bullets[], int size, Mackenzie &mackenzie, ALLEGRO_SAMPLE *gunShot){
+	if(mackenzie.timer < stun){
+		for(int i = 0; i < size; i++){
+			if(!bullets[i].live){
+				if(mackenzie.isFacingRight)
+				{
+					if(mackenzie.isCrouched)
+					{
+						bullets[i].x = mackenzie.x + 64;
+						bullets[i].y = mackenzie.y + 20;
+					}
+					else
+					{
+						bullets[i].x = mackenzie.x + 32;
+						bullets[i].y = mackenzie.y + 45;
+					}
+					bullets[i].live = true;
+					bullets[i].isMovingRight = true;
+					al_play_sample(gunShot, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+					break;
+				}
+				else
+				{
+					if(mackenzie.isCrouched)
+					{
+						bullets[i].x = mackenzie.x;
+						bullets[i].y = mackenzie.y + 20;
+					}
+					else
+					{
+						bullets[i].x = mackenzie.x;
+						bullets[i].y = mackenzie.y + 45;
+					}
+					bullets[i].live = true;
+					bullets[i].isMovingRight = false;
+					al_play_sample(gunShot, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+					break;
+				}
+			}
+
 		}
 	}
 }
-void UpdateBullet(Bullet bullets[], int size){
+void UpdateBullet(Bullet bullets[], int size, int &mapoffx){
 	for(int i = 0; i < size; i++){
 		if(bullets[i].live){
-			bullets[i].x += bullets[i].speed;
-			if(bullets[i].x > WIDTH)
-				bullets[i].live = false;
+			if(bullets[i].isMovingRight){
+				bullets[i].x += bullets[i].speed;
+				if(bullets[i].x > WIDTH+mapoffx)
+					bullets[i].live = false;
+			}
+			else
+			{
+				bullets[i].x -= bullets[i].speed;
+				if(bullets[i].x < mapoffx)
+					bullets[i].live = false;
+			}
 		}
 	}
 }
-void CollideBullet(Bullet bullets[], int bSize, Enemy enemies[], int eSize){
+void CollideBullet(Bullet bullets[], int bSize, Enemy enemies[], int eSize, Brick bricks[], int brSize, ALLEGRO_SAMPLE *ghost_death, ALLEGRO_SAMPLE *explosion){
 	for(int i = 0; i < bSize; i++){
 		if(bullets[i].live){
 			for(int j = 0; j < eSize; j++){
@@ -359,293 +1501,481 @@ void CollideBullet(Bullet bullets[], int bSize, Enemy enemies[], int eSize){
 						bullets[i].y > (enemies[j].y + enemies[j].boundUp) &&
 						bullets[i].y < (enemies[j].y + enemies[j].boundDown))
 					{
+						if(enemies[j].ID != BOSS){
+							bullets[i].live = false;
+							enemies[j].live = false;
+							if(enemies[j].ID == GHOST){
+							al_play_sample(ghost_death, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+						}else if(enemies[j].ID == BOMB){
+							al_play_sample(explosion, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+							}
+						}
+						else{
+							bossHitCount = 0;
+							bullets[i].live = false;
+							enemies[j].health--;
+						}
+					}
+				}
+			}
+			for(int j = 0; j < brSize; j++){
+				if(bricks[j].ID != WATER && bricks[j].ID != JUMP && bricks[j].ID != LEVEL){
+					if(bullets[i].x > bricks[j].x &&
+						bullets[i].x < (bricks[j].x + bricks[j].size) &&
+						bullets[i].y > bricks[j].y &&
+						bullets[i].y < (bricks[j].y + bricks[j].size))
+					{
 						bullets[i].live = false;
-						enemies[j].live = false;
+
 					}
 				}
 			}
 		}
 	}
 }
+void InitEnemy(Enemy enemies[], int size, string levelEnemies, int &deadZone){
 
-void InitEnemy(Enemy enemies[], int size){
 	for(int i = 0; i < size; i++){
-		enemies[i].ID = ENEMY;
+		enemies[i].boundDown = 0;
+		enemies[i].boundLeft = 0;
+		enemies[i].boundUp = 0;
+		enemies[i].boundDown = 0;
+		enemies[i].ID = GHOST;
 		enemies[i].live = false;
-		enemies[i].speed = 5;
-		enemies[i].boundLeft = 1;
-		enemies[i].boundRight = 31;
-		enemies[i].boundUp = 1;
-		enemies[i].boundDown = 31;
+		enemies[i].speed = 0;
+		enemies[i].x = -50;
+		enemies[i].y = -50;
+	}
+	string line;
+	int yOffset = 0;
+	int enemyInc = 0;
+	bool bossFight = false;
+	ifstream file (levelEnemies);
+	if (file.is_open())
+	{
+		while (file.good() && !file.eof())
+		{
+			getline (file, line);
+			const char *lineArray = line.c_str();
+			for(std::size_t i = 0; i < line.size(); i++){
+				enemies[enemyInc].x = i*32;
+				enemies[enemyInc].y = yOffset;
+				enemies[enemyInc].live = true;
+				if(lineArray[i] == 'o'){
+					enemies[enemyInc].ID = BOMB;
+					enemies[enemyInc].x += 0;
+					enemies[enemyInc].y += 0;
+					enemies[enemyInc].boundDown = 24;
+					enemies[enemyInc].boundUp = 8;
+					enemies[enemyInc].boundLeft = 8;
+					enemies[enemyInc].boundRight = 24;
+					enemyInc++;
+				}
+				else if(lineArray[i] == 'g'){
+					enemies[enemyInc].ID = GHOST;
+					enemies[enemyInc].boundDown = 31;
+					enemies[enemyInc].boundUp = -1;
+					enemies[enemyInc].boundLeft = -1;
+					enemies[enemyInc].boundRight = 31;
+					enemies[enemyInc].speed = 3;
+					enemyInc++;
+				}
+				else if(lineArray[i] == 'u'){
+					bossFight = true;
+					enemies[enemyInc].ID = BOSS;
+					enemies[enemyInc].boundDown = 256;
+					enemies[enemyInc].boundUp = 0;
+					enemies[enemyInc].boundLeft =10;
+					enemies[enemyInc].boundRight = 150;
+					enemies[enemyInc].timer = 0;
+					enemies[enemyInc].speed = 0;
+					enemies[enemyInc].speedy = 0;
+					enemies[enemyInc].health = 96;
+					enemies[enemyInc].attackCounter = 0;
+					enemyInc++;
+				}
+
+			}
+			yOffset += 32;
+		}
+		file.close();
+	}
+	if(bossFight){
+		deadZone = 0;
+	}
+	else{
+		deadZone = 350;
 	}
 }
-void DrawEnemy(Enemy enemies[], int size, ALLEGRO_BITMAP *ghost){
+void DrawEnemy(Enemy enemies[], int size, ALLEGRO_BITMAP *ghost, int &mapoffx,
+	ALLEGRO_BITMAP *bomb, ALLEGRO_BITMAP *boss, ALLEGRO_BITMAP *bossgrumpy, ALLEGRO_BITMAP *fish, int currentLevel){
 	for(int i = 0; i < size; i++){
 		if(enemies[i].live){
-			al_draw_bitmap(ghost, enemies[i].x, enemies[i].y, 0);
-		}
-	}
-}
-void StartEnemy(Enemy enemies[], int size){
-	for(int i = 0; i < size; i++){
-		if(!enemies[i].live){
-			if(rand() % 500 == 0){
-				enemies[i].live = true;
-				enemies[i].x = WIDTH;
-				enemies[i].y = 30 + rand() % (HEIGHT - 60);
-
-				break;
+			if(enemies[i].ID == GHOST){
+				if(currentLevel == 5){
+					al_draw_bitmap(fish, enemies[i].x - mapoffx, enemies[i].y, 0);
+				}
+				else{
+				al_draw_bitmap(ghost, enemies[i].x - mapoffx, enemies[i].y, 0);
+				}
+			}
+			else if(enemies[i].ID == BOMB){
+				al_draw_bitmap(bomb, enemies[i].x - mapoffx + enemies[i].boundLeft, enemies[i].y + enemies[i].boundUp, 0);
+			}
+			else if(enemies[i].ID == BOSS){
+				if(bossHitCount < 10){
+					al_draw_bitmap(bossgrumpy, enemies[i].x - mapoffx, enemies[i].y, ALLEGRO_FLIP_HORIZONTAL);
+					al_draw_filled_rectangle(enemies[i].x - mapoffx, enemies[i].y + enemies[i].boundUp,
+						enemies[i].x - mapoffx + enemies[i].health*2, enemies[i].y + enemies[i].boundUp + 10, al_map_rgb(0, 255, 0));
+					al_draw_filled_rectangle(enemies[i].x - mapoffx + enemies[i].health*2, enemies[i].y + enemies[i].boundUp,
+						enemies[i].x - mapoffx + 192, enemies[i].y + enemies[i].boundUp + 10, al_map_rgb(255, 0, 0));
+				}
+				else
+				{
+					al_draw_bitmap(boss, enemies[i].x - mapoffx, enemies[i].y, ALLEGRO_FLIP_HORIZONTAL);
+					al_draw_filled_rectangle(enemies[i].x - mapoffx, enemies[i].y + enemies[i].boundUp,
+						enemies[i].x - mapoffx + enemies[i].health*2, enemies[i].y + enemies[i].boundUp + 10, al_map_rgb(0, 255, 0));
+					al_draw_filled_rectangle(enemies[i].x - mapoffx + enemies[i].health*2, enemies[i].y + enemies[i].boundUp,
+						enemies[i].x - mapoffx + 192, enemies[i].y + enemies[i].boundUp + 10, al_map_rgb(255, 0, 0));
+				}
+				if(bossHitCount < 10){
+					bossHitCount++;
+				}
 			}
 		}
 	}
 }
-void UpdateEnemy(Enemy enemies[], int size){
+void StartEnemy(Enemy enemies[], int size, int &mapoffx, EBullet ebullets[], int bSize, Mackenzie &mackenzie, ALLEGRO_FONT *font64, Brick bricks[], int brSize){
 	for(int i = 0; i < size; i++){
-		if(enemies[i].live){
-			enemies[i].x -= enemies[i].speed;
+		if(enemies[i].x + enemies[i].boundLeft -mapoffx < WIDTH && enemies[i].live){
+			UpdateEnemy(enemies[i], ebullets, bSize, mackenzie, font64, bricks, brSize);
 		}
 	}
 }
-void CollideEnemy(Enemy enemies[], int size, Mackenzie &mackenzie){
+void UpdateEnemy(Enemy &enemy, EBullet ebullets[], int size, Mackenzie &mackenzie, ALLEGRO_FONT *font64, Brick bricks[], int brSize){
+	if(enemy.x + enemy.boundRight < 0 || enemy.y + enemy.boundDown < 0 || enemy.y + enemy.boundUp > HEIGHT){
+		//if go off the screen to left at beginning of level, above the level, or below the level than kill them
+		enemy.live = false;
+	}
+	if(enemy.ID == GHOST){
+		enemy.x -= enemy.speed;
+	}
+	else if(enemy.ID == BOSS){
+		if(enemy.health == 0){
+			int i;
+			bricks[brSize-1].ID = FINISH;
+			bricks[brSize-1].size = 32;
+			bricks[brSize-1].x = enemy.x + enemy.boundRight/2;
+			bricks[brSize-1].y = enemy.y + enemy.boundDown/2;
+			for(i = 2; i < 10; i++){
+				bricks[brSize-i].ID = JUMP;
+				bricks[brSize-i].size = 8;
+				bricks[brSize-i].timer = 0;
+				bricks[brSize-i].x = enemy.x + enemy.boundRight/2;
+				bricks[brSize-i].y = enemy.y + enemy.boundDown/2 + i*32;
+				bricks[brSize-i].xstart = enemy.x + enemy.boundRight/2;
+				bricks[brSize-i].ystart = enemy.y + enemy.boundDown/2 + i*32;
+			}
+			enemy.live = false;
+		}
+		else{
+		enemy.timer++;
+		attack(mackenzie, enemy, ebullets, size);
+		enemy.x += enemy.speed;
+		enemy.y += enemy.speedy;
+		}
+	}
+}
+void CollideEnemy(Enemy enemies[], int size, Mackenzie &mackenzie, ALLEGRO_SAMPLE *ghost_death, ALLEGRO_SAMPLE *mackenzie_hit){
 	for(int i = 0; i < size; i++){
 		if(enemies[i].live){
 			if(enemies[i].x + enemies[i].boundLeft < mackenzie.x + mackenzie.boundRight &&
 				enemies[i].x + enemies[i].boundRight > mackenzie.x + mackenzie.boundLeft &&
 				enemies[i].y + enemies[i].boundUp < mackenzie.y + mackenzie.boundDown &&
-				enemies[i].y + enemies[i].boundDown > mackenzie.y + mackenzie.boundUp){
-					mackenzie.lives--;
-					enemies[i].live = false;
-			}
-			else if(enemies[i].x < 0){
-				enemies[i].live = false;
+				enemies[i].y + enemies[i].boundDown > mackenzie.y + mackenzie.boundUp && !mackenzie.invincible){
+					if(enemies[i].ID != BOSS){
+						enemies[i].live = false;
+					}
+					hitMackenzie(mackenzie, mackenzie_hit);
+					if(enemies[i].ID == GHOST){
+						al_play_sample(ghost_death, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+					}
 			}
 		}
 	}
 }
 
-void InitBrick(Brick bricks[], int size){
+void InitBrick(Brick bricks[], int size, string level, Mackenzie &mackenzie){
+
 	for(int i = 0; i < size; i++){
 		bricks[i].ID = BRICK;
-		bricks[i].size = 32;
+		bricks[i].level = 0;
+		bricks[i].size = 0;
+		bricks[i].timer = 0;
+		bricks[i].x = 0;
+		bricks[i].xstart = 0;
+		bricks[i].y = 0;
+		bricks[i].ystart = 0;
+	}
+	string line;
+	int yOffset = 0;
+	int brickInc = 0;
+	int levelInc = 1;
+	ifstream file (level);
+	if (file.is_open())
+	{
+		while (file.good() && !file.eof())
+		{
+			getline (file, line);
+			const char *lineArray = line.c_str();
+			for(std::size_t i = 0; i < line.size(); i++){
+				if(lineArray[i] == 'm'){
+					mackenzie.x = i*32;
+					mackenzie.y = yOffset;
+				}
+				if(lineArray[i] != ' ' && lineArray[i] != 'm'){
+					bricks[brickInc].size = 32;
+					bricks[brickInc].x = i*32;
+					bricks[brickInc].y = yOffset;
+					if(lineArray[i] == 'b'){
+						bricks[brickInc].ID = BRICK;
+					}
+					else if(lineArray[i] == 's'){
+						bricks[brickInc].ID = SPRING;
+					}
+					else if(lineArray[i] == 'w') {
+						bricks[brickInc].ID = WATER;
+					}
+					else if(lineArray[i] == 'j') {
+						bricks[brickInc].ID = JUMP;
+						bricks[brickInc].size = 8; //if changed from 8 than must change collision detection
+						bricks[brickInc].timer = 0;
+						bricks[brickInc].xstart = bricks[brickInc].x;
+						bricks[brickInc].ystart = bricks[brickInc].y;
+					}
+					else if(lineArray[i] == 'c') {
+						bricks[brickInc].ID = CANNON;
+						bricks[brickInc].timer = 3;
+					}
+					else if(lineArray[i] == 'l') {
+						bricks[brickInc].ID = LEVEL;
+						bricks[brickInc].level = levelInc;
+						levelInc++;
+					}
+					else if(lineArray[i] == 'f') {
+						bricks[brickInc].ID = FINISH;
+					}
+					else if(lineArray[i] == 'e') {
+						bricks[brickInc].ID = SEAWEED;
+					}
+					else if (lineArray[i] == 't') {
+						bricks[brickInc].ID = CUTSCENE;
+					}
+					brickInc++;
+				}
+			}
+			yOffset += 32;
+		}
+		file.close();
 	}
 
-	bricks[0].x = 330;
-	bricks[0].y = 458;
-	bricks[0].ID = SPRING;
-
-	bricks[1].x = 0;
-	bricks[1].y = 0;
-	bricks[2].x = 32;
-	bricks[2].y = 0;
-	bricks[3].x = 64;
-	bricks[3].y = 0;
-	bricks[4].x = 96;
-	bricks[4].y = 0;
-	bricks[5].x = 512;
-	bricks[5].y = 0;
-	bricks[6].x = 544;
-	bricks[6].y = 0;
-	bricks[7].x = 576;
-	bricks[7].y = 0;
-	bricks[8].x = 608;
-	bricks[8].y = 0;
-
-	bricks[9].x = 0;
-	bricks[9].y = 32;
-	bricks[10].x = 256;
-	bricks[10].y = 32;
-	bricks[11].x = 288;
-	bricks[11].y = 32;
-	bricks[65].x = 320;
-	bricks[66].y = 32;
-	bricks[12].x = 608;
-	bricks[12].y = 32;
-
-	bricks[13].x = 0;
-	bricks[13].y = 64;
-	bricks[15].x = 608;
-	bricks[15].y = 64;
-
-	bricks[16].x = 0;
-	bricks[16].y = 96;
-	bricks[17].x = 608;
-	bricks[17].y = 96;
-
-	bricks[18].x = 0;
-	bricks[18].y = 128;
-	bricks[19].x = 96;
-	bricks[19].y = 128;
-	bricks[20].x = 128;
-	bricks[20].y = 128;
-	bricks[21].x = 416;
-	bricks[21].y = 128;
-	bricks[22].x = 448;
-	bricks[22].y = 128;
-	bricks[23].x = 480;
-	bricks[23].y = 128;
-	bricks[24].x = 608;
-	bricks[24].y = 128;
-
-	bricks[25].x = 608;
-	bricks[25].y = 160;
-	bricks[26].x = 0;
-	bricks[26].y = 160;
-	bricks[27].x = 128;
-	bricks[27].y = 160;
-
-	bricks[28].x = 0;
-	bricks[28].y = 192;
-	bricks[29].x = 128;
-	bricks[29].y = 192;
-	bricks[30].x = 608;
-	bricks[30].y = 192;
-
-	bricks[31].x = 0;
-	bricks[31].y = 224;
-	bricks[32].x = 128;
-	bricks[32].y = 224;
-	bricks[33].x = 160;
-	bricks[33].y = 224;
-	bricks[34].x = 192;
-	bricks[34].y = 224;
-	bricks[35].x = 224;
-	bricks[35].y = 224;
-	bricks[36].x = 256;
-	bricks[36].y = 224;
-	bricks[37].x = 32;
-	bricks[37].y = 224;
-	bricks[38].x = 608;
-	bricks[38].y = 224;
-
-	bricks[39].x = 0;
-	bricks[39].y = 256;
-	bricks[40].x = 128;
-	bricks[40].y = 256;
-	bricks[41].x = 480;
-	bricks[41].y = 256;
-	bricks[42].x = 512;
-	bricks[42].y = 256;
-	bricks[43].x = 544;
-	bricks[43].y = 256;
-	bricks[44].x = 576;
-	bricks[44].y = 256;
-	bricks[45].x = 608;
-	bricks[45].y = 256;
-
-	bricks[46].x = 0;
-	bricks[46].y = 288;
-	bricks[47].x = 128;
-	bricks[47].y = 288;
-	bricks[48].x = 608;
-	bricks[48].y = 288;
-
-	bricks[49].x = 0;
-	bricks[49].y = 320;
-	bricks[50].x = 96;
-	bricks[50].y = 320;
-	bricks[51].x = 128;
-	bricks[51].y = 320;
-	bricks[52].x = 608;
-	bricks[52].y = 320;
-
-	bricks[53].x = 0;
-	bricks[53].y = 352;
-	bricks[54].x = 608;
-	bricks[54].y = 352;
-
-	bricks[55].x = 0;
-	bricks[55].y = 384;
-	bricks[56].x = 384;
-	bricks[56].y = 384;
-	bricks[57].x = 416;
-	bricks[57].y = 384;
-	bricks[58].x = 608;
-	bricks[58].y = 384;
-
-	bricks[59].x = 0;
-	bricks[59].y = 416;
-	bricks[60].x = 32;
-	bricks[60].y = 416;
-	bricks[61].x = 384;
-	bricks[61].y = 416;
-	bricks[62].x = 416;
-	bricks[62].y = 416;
-	bricks[63].x = 608;
-	bricks[63].y = 416;
-
-	bricks[64].x = 0;
-	bricks[64].y = 448;
-	bricks[65].x = 32;
-	bricks[65].y = 448;
-	bricks[66].x = 64;
-	bricks[66].y = 448;
-	bricks[67].x = 96;
-	bricks[67].y = 448;
-	bricks[68].x = 128;
-	bricks[68].y = 448;
-	bricks[69].x = 160;
-	bricks[69].y = 448;
-	bricks[70].x = 256;
-	bricks[70].y = 448;
-	bricks[71].x = 384;
-	bricks[71].y = 448;
-	bricks[72].x = 416;
-	bricks[72].y = 448;
-	bricks[73].x = 544;
-	bricks[73].y = 448;
-	bricks[74].x = 576;
-	bricks[74].y = 448;
-	bricks[75].x = 608;
-	bricks[75].y = 448;
-
-	bricks[76].x = 256;
-	bricks[76].y = 256;
-	bricks[77].x = 256;
-	bricks[77].y = 288;
-	bricks[78].x = 288;
-	bricks[78].y = 288;
-
 }
-void DrawBrick(Brick bricks[], int size, ALLEGRO_BITMAP *platform){
-	for(int i = 0; i < size; i++){
-		if(IsBrickOnScreen(bricks, i)){
-			if(bricks[i].ID == BRICK){
-				al_draw_bitmap(platform, bricks[i].x, bricks[i].y, 0);
+void DrawBrick(Brick bricks[], int size, ALLEGRO_BITMAP *platform, ALLEGRO_BITMAP *spring,
+	int &mapoffx, ALLEGRO_BITMAP *jump_pickup, ALLEGRO_FONT *size32, int unlocked,
+	ALLEGRO_BITMAP *eyeball, Mackenzie &mackenzie, ALLEGRO_BITMAP *seaweed){
+		for(int i = 0; i < size; i++){
+			if(IsBrickOnScreen(bricks, i, mapoffx)){
+				if(bricks[i].ID == BRICK){
+					al_draw_bitmap(platform, bricks[i].x - mapoffx, bricks[i].y, 0);
+				}
+				else if(bricks[i].ID == SPRING){
+					al_draw_bitmap(spring, bricks[i].x - mapoffx, bricks[i].y, 0);
+				}
+				else if(bricks[i].ID == WATER){
+					al_draw_filled_rectangle(bricks[i].x - mapoffx, bricks[i].y, bricks[i].x + bricks[i].size - mapoffx,
+						bricks[i].y + bricks[i].size, al_map_rgba_f(.1, .3, .7, .5));
+				}
+				else if(bricks[i].ID == JUMP){
+					al_draw_bitmap(jump_pickup, bricks[i].x - mapoffx + bricks[i].size, bricks[i].y + bricks[i].size, 0);
+				}
+				else if(bricks[i].ID == CANNON){
+					float mxcenter = mackenzie.x + mackenzie.boundLeft/2 + mackenzie.boundRight/2;
+					float mycenter = mackenzie.y + mackenzie.boundDown/2 + mackenzie.boundUp/2;
+					float deltax = bricks[i].x + bricks[i].size/2 - mxcenter;
+					float deltay = bricks[i].y + bricks[i].size/2 - mycenter;
+					float angle = atan2f(deltay, deltax);
+					al_draw_rotated_bitmap(eyeball, bricks[i].size/2, bricks[i].size/2, bricks[i].x - mapoffx + bricks[i].size/2, bricks[i].y + bricks[i].size/2, angle + ALLEGRO_PI/2, 0);
+				}
+				else if(bricks[i].ID == SEAWEED){
+					al_draw_filled_rectangle(bricks[i].x - mapoffx, bricks[i].y, bricks[i].x - mapoffx + bricks[i].size, bricks[i].y + bricks[i].size, al_map_rgba_f(.1, .3, .7, .5));
+					al_draw_bitmap(seaweed, bricks[i].x - mapoffx, bricks[i].y, 0);
+				}
+				else if(bricks[i].ID == LEVEL){
+					char buffer [5];
+					if(bricks[i].level <= unlocked){
+						al_draw_textf(size32, al_map_rgb(10, 200, 10), bricks[i].x-mapoffx,
+							bricks[i].y, 0, _itoa(bricks[i].level, buffer, 10));
+					}
+					else{
+						al_draw_textf(size32, al_map_rgb(200, 10, 10), bricks[i].x-mapoffx,
+							bricks[i].y, 0, _itoa(bricks[i].level, buffer, 10));
+					}
+				}
+				else if(bricks[i].ID == FINISH){
+					al_draw_filled_rectangle(bricks[i].x - mapoffx, bricks[i].y, bricks[i].x + bricks[i].size - mapoffx,
+						bricks[i].y + bricks[i].size, al_map_rgb(255, 255, 255));
+					al_draw_filled_rectangle(bricks[i].x - mapoffx, bricks[i].y, bricks[i].x + 8 - mapoffx,
+						bricks[i].y + 8, al_map_rgb(0, 0, 0));
+					al_draw_filled_rectangle(bricks[i].x - mapoffx + 16, bricks[i].y, bricks[i].x + 24 - mapoffx,
+						bricks[i].y + 8, al_map_rgb(0, 0, 0));
+					al_draw_filled_rectangle(bricks[i].x - mapoffx + 8, bricks[i].y + 8, bricks[i].x + 16 - mapoffx,
+						bricks[i].y + 16, al_map_rgb(0, 0, 0));
+					al_draw_filled_rectangle(bricks[i].x - mapoffx + 24, bricks[i].y + 8, bricks[i].x + 32 - mapoffx,
+						bricks[i].y + 16, al_map_rgb(0, 0, 0));
+					al_draw_filled_rectangle(bricks[i].x - mapoffx, bricks[i].y + 16, bricks[i].x + 8 - mapoffx,
+						bricks[i].y + 24, al_map_rgb(0, 0, 0));
+					al_draw_filled_rectangle(bricks[i].x - mapoffx + 16, bricks[i].y + 16, bricks[i].x + 24 - mapoffx,
+						bricks[i].y + 24, al_map_rgb(0, 0, 0));
+					al_draw_filled_rectangle(bricks[i].x - mapoffx + 8, bricks[i].y + 24, bricks[i].x + 16 - mapoffx,
+						bricks[i].y + 32, al_map_rgb(0, 0, 0));
+					al_draw_filled_rectangle(bricks[i].x - mapoffx + 24, bricks[i].y + 24, bricks[i].x + 32 - mapoffx,
+						bricks[i].y + 32, al_map_rgb(0, 0, 0));
+				}
 			}
-			else if(bricks[i].ID == SPRING){
-				al_draw_filled_rounded_rectangle(bricks[i].x, bricks[i].y, bricks[i].x + bricks[i].size,
-					bricks[i].y + bricks[i].size, 5, 5, al_map_rgb(0, 255, 0));
+		}
+}
+void UpdateBrick(Brick bricks[], int size, int &mapoffx, EBullet ebullets[], int ebsize, Mackenzie &mackenzie){
+	for(int i = 0; i < size; i++){
+		if(bricks[i].ID == JUMP){
+			if(bricks[i].x == -32 && bricks[i].y == -32){
+				bricks[i].timer++;
+			}
+			if(bricks[i].timer > 6){
+				bricks[i].x = bricks[i].xstart;
+				bricks[i].y = bricks[i].ystart;
+				bricks[i].timer = 0;
+			}
+		}
+		if(bricks[i].ID == CANNON){
+			bricks[i].timer++;
+			if(bricks[i].timer > 4){
+				bricks[i].timer = 0;
+				FireCannon(bricks[i], ebullets, ebsize, mackenzie);
 			}
 		}
 	}
 }
-
-void UpdateBrick(Brick bricks[], int size){
-
-}
-void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie){
-
+void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie, int &unlocked, ALLEGRO_SAMPLE *powerup, int &currentLevel, int menuOption){
+	bool collided = false;
 	for(int i = 0; i < size; i++){
-		if(!((mackenzie.y + mackenzie.boundDown) < bricks[i].y ||
-			(mackenzie.y + mackenzie.boundUp) > (bricks[i].y + bricks[i].size) ||
-			(mackenzie.x + mackenzie.boundRight) < bricks[i].x ||
-			(mackenzie.x + mackenzie.boundLeft) > (bricks[i].x + bricks[i].size))){
-				CollideBrickLeft(bricks, size, mackenzie);
-				CollideBrickRight(bricks, size, mackenzie);
-				CollideBrickUp(bricks, size, mackenzie);
-				CollideBrickDown(bricks, size, mackenzie);
+		if(bricks[i].ID == JUMP){
+			if(!((mackenzie.y + mackenzie.boundDown) < (bricks[i].y + bricks[i].size) ||
+				(mackenzie.y + mackenzie.boundUp) > (bricks[i].y + bricks[i].size*3) ||
+				(mackenzie.x + mackenzie.boundRight) < (bricks[i].x + bricks[i].size) ||
+				(mackenzie.x + mackenzie.boundLeft) > (bricks[i].x + bricks[i].size*3))){
+					mackenzie.extraJump = true;
+					al_play_sample(powerup, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+					bricks[i].x = -32;
+					bricks[i].y = -32;
+			}
+		} else if (bricks[i].ID == CUTSCENE) {
+			printf("%d", inCutscene);
+			if (inCutscene < 0) {
+				if (!((mackenzie.x + mackenzie.boundRight) < bricks[i].x ||
+					  (mackenzie.x + mackenzie.boundLeft) > (bricks[i].x + bricks[i].size))){
+						  cutscene(bricks[i], currentLevel);
+				}
+			}
+		}
+		else{
+			if(!((mackenzie.y + mackenzie.boundDown) < bricks[i].y ||
+				(mackenzie.y + mackenzie.boundUp) > (bricks[i].y + bricks[i].size) ||
+				(mackenzie.x + mackenzie.boundRight) < bricks[i].x ||
+				(mackenzie.x + mackenzie.boundLeft) > (bricks[i].x + bricks[i].size))){
+					if(bricks[i].ID == LEVEL){
+						if(keys[SPACE] || keys[ENTER] || keys[DOWN]){
+							if(bricks[i].level <= unlocked){
+								currentLevel = bricks[i].level;
+								loadLevel(bricks[i].level);
+							}
+						}
+					}
+					else if(bricks[i].ID == FINISH){
+						if(unlocked == currentLevel){
+							unlocked++;
+							string save;
+							char buffer[5];
+							if(menuOption == 1){
+								save = "save1.txt";
+							}
+							else if(menuOption == 2){
+								save = "save2.txt";
+							}
+							else if(menuOption == 3){
+								save = "save3.txt";
+							}
+							ofstream file (save);
+							if(file.is_open()){
+								file << _itoa(unlocked, buffer, 10);;
+							}
+						}
+						level = "loadLevel.txt";
+						levelEnemies = " ";
+						levelBackground = "basicBackground.bmp";
+						mackenzie.x = 64+(unlocked-1)*192;
+						mackenzie.y = 394;
+						mackenzie.vx = 0;
+						mackenzie.vy = 0;
+						loadNewLevel = true;
+					}
+					else{
+						if(bricks[i].ID == WATER){
+							if(mackenzie.isCrouched){
+								mackenzie.isCrouched = false;
+								mackenzie.y -= 32;
+								mackenzie.x += 14;
+							}
+						}
+						CollideBrickLeft(bricks, size, mackenzie);
+						CollideBrickRight(bricks, size, mackenzie);
+						CollideBrickUp(bricks, size, mackenzie);
+						CollideBrickDown(bricks, size, mackenzie);
+						collided = true;
+					}
+			}
 		}
 	}
+
+	if(!collided){
+		mackenzie.onGround = false;
+		if(mackenzie.isCrouched){
+			mackenzie.isCrouched = false;
+			mackenzie.y -= 32;
+			mackenzie.x += 16;
+		}
+	}
+
 }
 void CollideBrickLeft(Brick bricks[], int size, Mackenzie &mackenzie){
 	for(int i = 0; i < size; i++){
 		if(bricks[i].x < mackenzie.x - 16){
 			if(bricks[i].x + bricks[i].size > mackenzie.x + mackenzie.boundLeft &&
-				mackenzie.y + 4 < bricks[i].y + bricks[i].size &&
-				mackenzie.y + 60 > bricks[i].y){
-					mackenzie.x = bricks[i].x + bricks[i].size - mackenzie.boundLeft;
-					if(mackenzie.vx < 0)
-						mackenzie.vx = 0;
+				mackenzie.y + mackenzie.boundUp + 4 < bricks[i].y + bricks[i].size &&
+				mackenzie.y + mackenzie.boundDown - 4 > bricks[i].y){
+					if(bricks[i].ID == WATER){
+						if(mackenzie.vx < -2)
+							mackenzie.vx = -2;
+						mackenzie.onGround = true;
+					}
+					else if(bricks[i].ID == LEVEL){}
+					else{
+						if(!((bricks[i].x + bricks[i].size) == bricks[i+1].x
+							&& bricks[i].y == bricks[i+1].y && bricks[i+1].ID != WATER)){
+								mackenzie.x = bricks[i].x + bricks[i].size - mackenzie.boundLeft;
+								if(mackenzie.vx < 0)
+									mackenzie.vx = 0;
+						}
+					}
 			}
 		}
 	}
@@ -654,11 +1984,22 @@ void CollideBrickRight(Brick bricks[], int size, Mackenzie &mackenzie){
 	for(int i = 0; i < size; i++){
 		if(bricks[i].x > mackenzie.x + 16){
 			if(bricks[i].x < mackenzie.x + mackenzie.boundRight &&
-				mackenzie.y + 4 < bricks[i].y + bricks[i].size &&
-				mackenzie.y + 60 > bricks[i].y){
-					mackenzie.x = bricks[i].x - mackenzie.boundRight;
-					if(mackenzie.vx > 0)
-						mackenzie.vx = 0;
+				mackenzie.y + mackenzie.boundUp + 4 < bricks[i].y + bricks[i].size &&
+				mackenzie.y + mackenzie.boundDown - 4 > bricks[i].y){
+					if(bricks[i].ID == WATER){
+						if(mackenzie.vx > 2)
+							mackenzie.vx = 2;
+						mackenzie.onGround = true;
+					}
+					else if(bricks[i].ID == LEVEL){}
+					else{
+						if(!(bricks[i].x == (bricks[i-1].x + bricks[i-1].size)
+							&& bricks[i].y == bricks[i-1].y && bricks[i-1].ID != WATER)){
+								mackenzie.x = bricks[i].x - mackenzie.boundRight;
+								if(mackenzie.vx > 0)
+									mackenzie.vx = 0;
+						}
+					}
 			}
 		}
 	}
@@ -668,37 +2009,367 @@ void CollideBrickUp(Brick bricks[], int size, Mackenzie &mackenzie){
 		if(bricks[i].y < mackenzie.y - 16){
 			if(mackenzie.y + mackenzie.boundUp < bricks[i].y + bricks[i].size &&
 				mackenzie.x < bricks[i].x + bricks[i].size &&
-				mackenzie.x + 32 > bricks[i].x){
-					mackenzie.y = bricks[i].y + bricks[i].size - mackenzie.boundUp;
-					if(mackenzie.vy < 0)
-						mackenzie.vy = 0;
+				mackenzie.x + mackenzie.boundRight > bricks[i].x){
+					if(bricks[i].ID == WATER){
+						if(mackenzie.vy < -3.3){
+							mackenzie.vy = -3.3;
+						}
+						mackenzie.onGround = true;
+					}
+					else{
+						mackenzie.y = bricks[i].y + bricks[i].size - mackenzie.boundUp;
+						if(mackenzie.vy < 0)
+							mackenzie.vy = 0;
+					}
 			}
 		}
 	}
 }
 void CollideBrickDown(Brick bricks[], int size, Mackenzie &mackenzie){
 	for(int i = 0; i < size; i++){
-		if(bricks[i].y > mackenzie.y + 48){
+		if(bricks[i].y > mackenzie.y + mackenzie.boundDown - 16){
 			if(bricks[i].y < mackenzie.y + mackenzie.boundDown &&
 				mackenzie.x < bricks[i].x + bricks[i].size &&
-				mackenzie.x + 32 > bricks[i].x){
-					mackenzie.y = bricks[i].y - mackenzie.boundDown;
-					if(bricks[i].ID == BRICK){
+				mackenzie.x + mackenzie.boundRight > bricks[i].x){
+					mackenzie.extraJump = false;
+					if(bricks[i].ID == SPRING){
+						if(!(mackenzie.timer < stun)){
+							mackenzie.vy = 0;
+							mackenzie.y = bricks[i].y - mackenzie.boundDown;
+						}
+						else{
+							mackenzie.vy = -10;
+						}
+						mackenzie.onGround = false;
+						if(mackenzie.isCrouched){
+							mackenzie.y -= 32;
+							mackenzie.isCrouched = false;
+						}
+					}
+					else if(bricks[i].ID == WATER){
+						if(mackenzie.vy > 1.85)
+							mackenzie.vy = 1.85;
+						if(mackenzie.vy < -3.3)
+							mackenzie.vy = -3.3;
+						mackenzie.onGround = true;
+					}
+					else{
+						mackenzie.y = bricks[i].y - mackenzie.boundDown;
 						if(mackenzie.vy > 0)
 							mackenzie.vy = 0;
 						mackenzie.onGround = true;
-					}
-					if(bricks[i].ID == SPRING){
-						mackenzie.vy = -10;
 					}
 			}
 		}
 	}
 }
 
-bool IsBrickOnScreen(Brick bricks[], int brick){
-	return (bricks[brick].x + bricks[brick].size > 0 &&
-		bricks[brick].x < WIDTH &&
+bool IsBrickOnScreen(Brick bricks[], int brick, int &mapoffx){
+	if(bricks[brick].ID == JUMP){
+		return (bricks[brick].x + bricks[brick].size*3-mapoffx > 0 &&
+			bricks[brick].x-mapoffx + bricks[brick].size < WIDTH &&
+			bricks[brick].y + bricks[brick].size < HEIGHT &&
+			bricks[brick].y + bricks[brick].size*3 > 0);
+	}
+	return (bricks[brick].x + bricks[brick].size-mapoffx > 0 &&
+		bricks[brick].x-mapoffx < WIDTH &&
 		bricks[brick].y < HEIGHT &&
 		bricks[brick].y + bricks[brick].size > 0);
+}
+
+void FireCannon(Brick cannon, EBullet ebullets[], int size, Mackenzie &mackenzie){
+	for(int i = 0; i < size; i++){
+		if(!ebullets[i].live){
+			ebullets[i].live = true;
+			ebullets[i].x = cannon.x + cannon.size/2;
+			ebullets[i].y = cannon.y + cannon.size/2;
+			float mxcenter = mackenzie.x + mackenzie.boundLeft/2 + mackenzie.boundRight/2;
+			float mycenter = mackenzie.y + mackenzie.boundDown/2 + mackenzie.boundUp/2;
+			float deltax = ebullets[i].x - mxcenter;
+			float deltay = ebullets[i].y - mycenter;
+			float angle = atan2f(deltay, deltax);
+			ebullets[i].vx = cos(angle)*2;
+			ebullets[i].vy = sin(angle)*2;
+			break;
+		}
+	}
+}
+void InitEBullet(EBullet ebullets[], int size){
+	for(int i = 0; i < size; i++){
+		ebullets[i].ID = EBULLET;
+		ebullets[i].live = false;
+	}
+}
+void DrawEBullet(EBullet ebullets[], int size, int &mapoffx, ALLEGRO_BITMAP *lightning){
+	for(int i = 0; i < size; i++){
+		if(ebullets[i].live){
+			if(ebullets[i].ID == LIGHTNING){
+				al_draw_bitmap(lightning, ebullets[i].x - mapoffx, ebullets[i].y, 0);
+			}
+			else{
+			al_draw_filled_circle(ebullets[i].x - mapoffx, ebullets[i].y, 2, al_map_rgb(255, 10, 10));
+			}
+		}
+	}
+}
+void UpdateEBullet(EBullet ebullets[], int size, int &mapoffx){
+	for(int i = 0; i < size; i++){
+		if(ebullets[i].x > WIDTH+mapoffx || ebullets[i].x < mapoffx
+			|| ebullets[i].y < 0 || ebullets[i].y > HEIGHT)
+			ebullets[i].live = false;
+		if(ebullets[i].live){
+			ebullets[i].x -= ebullets[i].vx;
+			ebullets[i].y -= ebullets[i].vy;
+		}
+	}
+}
+void CollideEBullet(EBullet ebullets[], int ebsize, Mackenzie &mackenzie, Brick bricks[], int brsize, ALLEGRO_SAMPLE *mackenzie_hit){
+	for(int i = 0; i < ebsize; i++){
+		if(ebullets[i].live){
+			for(int j = 0; j < brsize; j++){
+				if(bricks[j].ID != WATER && bricks[j].ID != JUMP && bricks[j].ID != CANNON){
+					if(ebullets[i].x > bricks[j].x &&
+						ebullets[i].x < (bricks[j].x + bricks[j].size) &&
+						ebullets[i].y > bricks[j].y &&
+						ebullets[i].y < (bricks[j].y + bricks[j].size))
+					{
+						ebullets[i].live = false;
+					}
+				}
+			}
+			if(ebullets[i].ID == LIGHTNING){
+			if(ebullets[i].x + 32 > mackenzie.x + mackenzie.boundLeft &&
+				ebullets[i].x < mackenzie.x + mackenzie.boundRight &&
+				ebullets[i].y + 32 > mackenzie.y + mackenzie.boundUp &&
+				ebullets[i].y < mackenzie.y + mackenzie.boundDown && !mackenzie.invincible){
+					ebullets[i].live = false;
+					hitMackenzie(mackenzie, mackenzie_hit);
+			}
+			}
+			else{
+			if(ebullets[i].x > mackenzie.x + mackenzie.boundLeft &&
+				ebullets[i].x < mackenzie.x + mackenzie.boundRight &&
+				ebullets[i].y > mackenzie.y + mackenzie.boundUp &&
+				ebullets[i].y < mackenzie.y + mackenzie.boundDown && !mackenzie.invincible){
+					ebullets[i].live = false;
+					hitMackenzie(mackenzie, mackenzie_hit);
+			}
+			}
+		}
+	}
+}
+
+void frameDelayIncrementer(){
+	frameDelayCount++;
+	if(frameDelayCount > FRAMEDELAY){
+		frameDelayCount = 0;
+	}
+}
+void DrawBackground(ALLEGRO_BITMAP *back, Brick bricks[], int size, int &mapoffx){
+	int imageWidth = al_get_bitmap_width(back);
+	int levelWidth = 0;
+
+	for(int i = 0; i < size; i++){
+		if(bricks[i].x > levelWidth){
+			levelWidth = bricks[i].x;
+		}
+	}
+
+	int amount = levelWidth/imageWidth;
+
+	for(int i = 0; i < (amount+2); i++){
+		al_draw_bitmap(back, i*imageWidth - mapoffx, 0, 0);
+	}
+}
+void hitMackenzie(Mackenzie &mackenzie, ALLEGRO_SAMPLE *mackenzie_hit){
+	if(mackenzie.isCrouched){
+		mackenzie.isCrouched = false;
+		mackenzie.y -= 32;
+		mackenzie.x += 14;
+		keys[DOWN] = false;
+	}
+	mackenzie.invincible = true;
+	mackenzie.timer = 4;
+	mackenzie.vx = mackenzie.vx/3;
+	mackenzie.vy = mackenzie.vy/3;
+	mackenzie.lives--;
+	al_play_sample(mackenzie_hit, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+}
+
+void loadLevel(int levelNumber){
+	char buffer[5];
+	level = "Level";
+	levelEnemies = "LevelEnemies";
+	levelBackground = "LevelBackground";
+	level += _itoa(levelNumber, buffer, 10);
+	levelEnemies += _itoa(levelNumber, buffer, 10);
+	levelBackground += _itoa(levelNumber, buffer, 10);
+	level += ".txt";
+	levelEnemies += ".txt";
+	levelBackground += ".bmp";
+	loadNewLevel = true;
+}
+
+void attack(Mackenzie &mackenzie, Enemy &enemy, EBullet ebullets[], int size){
+	if(enemy.timer > 2450){
+		enemy.timer = 0;
+		enemy.speed = 0;
+		enemy.speedy = 0;
+		enemy.attackCounter = 0;
+	}
+	else if(enemy.timer > 2300){
+		if(enemy.x > 605){
+			enemy.speed = -2;
+		}
+		else if(enemy.x < 595){
+			enemy.speed = 2;
+		}
+		else{
+			enemy.speed = 0;
+		}
+		if(enemy.y > 105){
+			enemy.speedy = -2;
+		}
+		else if(enemy.y < 95){
+			enemy.speedy = 2;
+		}
+		else{
+			enemy.speedy = 0;
+		}
+	}
+	else if(enemy.timer > 1550){
+		enemy.attackCounter++;
+		if(enemy.timer%15 == 0){
+			for(int i = 0; i < size; i++){
+				if(!ebullets[i].live){
+					ebullets[i].live = true;
+					ebullets[i].ID = EBULLET;
+					ebullets[i].x = enemy.x + enemy.boundRight/2;
+					ebullets[i].y = enemy.y + enemy.boundDown/2;
+					ebullets[i].vx = cos(enemy.attackCounter*(3.141592/180));
+					ebullets[i].vy = -abs(sin(enemy.attackCounter*(3.151592/180)));
+					break;
+				}
+			}
+		}
+	}
+	else if(enemy.timer > 1400){
+		if(enemy.x > 305){
+			enemy.speed = -2;
+		}
+		else if(enemy.x < 295){
+			enemy.speed = 2;
+		}
+		else{
+			enemy.speed = 0;
+		}
+		if(enemy.y > 5){
+			enemy.speedy = -2;
+		}
+		else if(enemy.y < 1){
+			enemy.speedy = 2;
+		}
+		else{
+			enemy.speedy = 0;
+		}
+	}
+	else if(enemy.timer > 550){
+		if(enemy.timer%552 == 0){
+		enemy.speed = -5;
+		enemy.speedy = -3;
+		}
+		if(enemy.x >= 600){
+			enemy.speed = -5;
+		}
+		else if(enemy.x <= 1){
+			enemy.speed = 5;
+		}
+		if(enemy.y >= 100){
+			enemy.speedy = -1;
+		}
+		else if(enemy.y <= 0){
+			enemy.speedy = 1;
+		}
+		if(enemy.timer%30 == 0){
+			for(int i = 0; i < size; i++){
+				if(!ebullets[i].live){
+					ebullets[i].live = true;
+					ebullets[i].ID = LIGHTNING;
+					ebullets[i].x = enemy.x + enemy.boundRight/2 - 50;
+					ebullets[i].y = enemy.y + enemy.boundDown/2;
+					ebullets[i].vx = sin(ebullets[i].y)*3;
+					ebullets[i].vy = -2;
+					break;
+				}
+			}
+		}
+
+	}
+	else if(enemy.timer > 300){
+
+	}
+	else{
+		if(enemy.timer%5 == 0){
+			for(int i = 0; i < size; i++){
+				if(!ebullets[i].live){
+					ebullets[i].live = true;
+					ebullets[i].x = enemy.x + enemy.boundRight/2;
+					ebullets[i].y = enemy.y + enemy.boundDown/2;
+					float mxcenter = mackenzie.x + mackenzie.boundLeft/2 + mackenzie.boundRight/2;
+					float mycenter = mackenzie.y + mackenzie.boundDown/2 + mackenzie.boundUp/2;
+					float deltax = ebullets[i].x - mxcenter;
+					float deltay = ebullets[i].y - mycenter;
+					float angle = atan2f(deltay, deltax);
+					ebullets[i].vx = cos(angle)*2;
+					ebullets[i].vy = sin(angle)*2;
+					break;
+				}
+			}
+		}
+	}
+}
+void cutscene(Brick brick, int currentLevel) {
+	string scene = "testScene.txt";
+	switch(currentLevel) {
+	case 0:
+		scene = "cutscene0.txt";
+		break;
+	case 1:
+		scene = "cutscene1.txt";
+		break;
+	case 2:
+		scene = "cutscene2.txt";
+		break;
+	case 3:
+		scene = "cutscene3.txt";
+		break;
+	case 4:
+		scene = "cutscene4.txt";
+		break;
+	case 5:
+		scene = "cutscene5.txt";
+		break;
+	case 6:
+		scene = "cutscene6.txt";
+		break;
+	case 7:
+		scene = "cutscene7.txt";
+		break;
+	}
+	cutsceneFile.open(scene);
+	if (cutsceneFile.is_open())	{
+		inCutscene = 0;
+		nextScenePage();
+	} else {
+		inCutscene = -1;
+	}
+}
+void nextScenePage() {
+	if (cutsceneFile.good() && !cutsceneFile.eof()) {
+		getline (cutsceneFile, cutline);
+	} else {
+		cutsceneFile.close();
+		inCutscene = 1;
+		cutline = "";
+	}
 }
