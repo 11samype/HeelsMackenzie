@@ -39,9 +39,9 @@ int inCutscene = -1;
 fstream cutsceneFile;
 string cutline = "";
 
-string level = "loadLevel.txt";
+string level = "levels/loadLevel.txt";
 string levelEnemies = " ";
-string levelBackground = "basicBackground.bmp";
+string levelBackground = "images/basicBackground.bmp";
 bool loadNewLevel = false;
 
 bool dead = false;
@@ -172,15 +172,15 @@ int main ()
 	ALLEGRO_EVENT_QUEUE *event_queue = NULL;
 	ALLEGRO_TIMER *timer = NULL;
 
-	if(!al_init())
+	if(!al_init()){
 		return -1;
+	}
 	al_set_new_display_flags(ALLEGRO_WINDOWED | ALLEGRO_RESIZABLE);
 	display = al_create_display(WIDTH, HEIGHT);
 	if(!display)
 		return -1;
 	timer = al_create_timer(1.0/FPS);
-
-
+	
 	al_init_primitives_addon();
 	al_install_keyboard();
 	al_init_font_addon();
@@ -193,15 +193,15 @@ int main ()
 	al_init_acodec_addon();
 	al_reserve_samples(maxSounds);
 
-	ALLEGRO_SAMPLE *song = al_load_sample("MacAttack (Extended).wav");
-	ALLEGRO_SAMPLE *death = al_load_sample("MacDeath.wav");
-	ALLEGRO_SAMPLE *jumpSound = al_load_sample("Jump.wav");
-	ALLEGRO_SAMPLE *gunShot = al_load_sample("gun_shot.wav");
-	ALLEGRO_SAMPLE *powerup = al_load_sample("Powerup.wav");
-	ALLEGRO_SAMPLE *moonWalkerSound = al_load_sample("mj_louder.wav");
-	ALLEGRO_SAMPLE *ghost_death = al_load_sample("ghost_death.wav");
-	ALLEGRO_SAMPLE *mackenzie_hit = al_load_sample("heels_hit.wav");
-	ALLEGRO_SAMPLE *explosion = al_load_sample("explosion.wav");
+	ALLEGRO_SAMPLE *song = al_load_sample("music/MacAttack (Extended).wav");
+	ALLEGRO_SAMPLE *death = al_load_sample("music/MacDeath.wav");
+	ALLEGRO_SAMPLE *jumpSound = al_load_sample("music/Jump.wav");
+	ALLEGRO_SAMPLE *gunShot = al_load_sample("music/gun_shot.wav");
+	ALLEGRO_SAMPLE *powerup = al_load_sample("music/Powerup.wav");
+	ALLEGRO_SAMPLE *moonWalkerSound = al_load_sample("music/mj_louder.wav");
+	ALLEGRO_SAMPLE *ghost_death = al_load_sample("music/ghost_death.wav");
+	ALLEGRO_SAMPLE *mackenzie_hit = al_load_sample("music/heels_hit.wav");
+	ALLEGRO_SAMPLE *explosion = al_load_sample("music/explosion.wav");
 
 	event_queue = al_create_event_queue();
 	
@@ -211,23 +211,23 @@ int main ()
 	ALLEGRO_FONT *font64 = al_load_font("arial.ttf", 64, 0);
 	ALLEGRO_FONT *font32 = al_load_font("arial.ttf", 32, 0);
 
-	platform = al_load_bitmap("brick1.bmp");
-	ghost = al_load_bitmap("ghost.bmp");
-	mackenziePic = al_load_bitmap("mackenzie_sheet.bmp");
-	bullet_blast = al_load_bitmap("gun_blast.bmp");
-	bomb = al_load_bitmap("bomb.bmp");
-	jump_pickup = al_load_bitmap("jump_pickup.bmp");
-	spring = al_load_bitmap("spring_jump.bmp");
-	mackenziePicCrouch = al_load_bitmap("mackenzie_crawl_sheet.bmp");
-	heel = al_load_bitmap("heel.bmp");
-	moonWalkerPic = al_load_bitmap("moonwalkersheet.bmp");
-	eyeball = al_load_bitmap("eyeball.bmp");
-	boss = al_load_bitmap("boss.bmp");
-	title = al_load_bitmap("title.bmp");
-	seaweed = al_load_bitmap("seaweed.bmp");
-	fish = al_load_bitmap("fish.bmp");
-	lightning = al_load_bitmap("lightning.bmp");
-	bossgrumpy = al_load_bitmap("grumpyface.bmp");
+	platform = al_load_bitmap("images/brick1.bmp");
+	ghost = al_load_bitmap("images/ghost.bmp");
+	mackenziePic = al_load_bitmap("images/mackenzie_sheet.bmp");
+	bullet_blast = al_load_bitmap("images/gun_blast.bmp");
+	bomb = al_load_bitmap("images/bomb.bmp");
+	jump_pickup = al_load_bitmap("images/jump_pickup.bmp");
+	spring = al_load_bitmap("images/spring_jump.bmp");
+	mackenziePicCrouch = al_load_bitmap("images/mackenzie_crawl_sheet.bmp");
+	heel = al_load_bitmap("images/heel.bmp");
+	moonWalkerPic = al_load_bitmap("images/moonwalkersheet.bmp");
+	eyeball = al_load_bitmap("images/eyeball.bmp");
+	boss = al_load_bitmap("images/boss.bmp");
+	title = al_load_bitmap("images/title.bmp");
+	seaweed = al_load_bitmap("images/seaweed.bmp");
+	fish = al_load_bitmap("images/fish.bmp");
+	lightning = al_load_bitmap("images/lightning.bmp");
+	bossgrumpy = al_load_bitmap("images/grumpyface.bmp");
 
 	al_register_event_source(event_queue, al_get_keyboard_event_source());
 	al_register_event_source(event_queue, al_get_display_event_source(display));
@@ -445,11 +445,11 @@ int main ()
 			unlocked = loadSave(menuOption, newGame);
 			redraw = true;
 			loadNewLevel = true;
-			level = "loadLevel.txt";
+			level = "levels/loadLevel.txt";
 			mackenzie.x = 64 + (unlocked - 1) * 192;
 			mackenzie.y = 394;
 			levelEnemies = " ";
-			levelBackground = "basicBackground.bmp";
+			levelBackground = "images/basicBackground.bmp";
 		}
 		else
 		{
@@ -475,43 +475,43 @@ int main ()
 
 				case 1:
 					al_destroy_sample(song);
-					song = al_load_sample("LevelStart.wav");
+					song = al_load_sample("music/LevelStart.wav");
 					al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
 					break;
 	
 				case 2:
 					al_destroy_sample(song);
-					song = al_load_sample("LevelStart (Acoustic).wav");
+					song = al_load_sample("music/LevelStart (Acoustic).wav");
 					al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
 					break;
 	
 				case 3:
 					al_destroy_sample(song);
-					song = al_load_sample("Somethings Amiss (Acoustic).wav");
+					song = al_load_sample("music/Somethings Amiss (Acoustic).wav");
 					al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
 					break;
 	
 				case 4:
 					al_destroy_sample(song);
-					song = al_load_sample("MacAttack (Acoustic).wav");
+					song = al_load_sample("music/MacAttack (Acoustic).wav");
 					al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
 					break;
 	
 				case 5:
 					al_destroy_sample(song);
-					song = al_load_sample("Monstruous_Castle.wav");
+					song = al_load_sample("music/Monstruous_Castle.wav");
 					al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
 					break;
 	
 				case 6:
 					al_destroy_sample(song);
-					song = al_load_sample("Somethings Amiss.wav");
+					song = al_load_sample("music/Somethings Amiss.wav");
 					al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
 					break;
 	
 				case 7:
 					al_destroy_sample(song);
-					song = al_load_sample("Somethings Amiss.wav");
+					song = al_load_sample("music/Somethings Amiss.wav");
 					al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
 					break;
 	
@@ -683,13 +683,13 @@ int main ()
 						case 2:
 							loadNewLevel = true;
 							redraw = true;
-							level = "loadLevel.txt";
+							level = "levels/loadLevel.txt";
 							mackenzie.x = 64 + (unlocked - 1) * 192;
 							mackenzie.y = 394;
 							mackenzie.vx = 0;
 							mackenzie.vy = 0;
 							levelEnemies = " ";
-							levelBackground = "basicBackground.bmp";
+							levelBackground = "images/basicBackground.bmp";
 							pause = false;
 							break;
 						case 3:
@@ -808,7 +808,7 @@ int main ()
 				if(dead){
 					if(needPlayDeath){
 						al_destroy_sample(song);
-						song = al_load_sample("MacDeath.wav");
+						song = al_load_sample("music/MacDeath.wav");
 						al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
 						needPlayDeath = false;
 					}
@@ -898,13 +898,13 @@ int loadSave(int menuOption, bool newGame){
 	string save;
 	int value = 0;
 	if(menuOption == 1){
-		save = "save1.txt";
+		save = "saves/save1.txt";
 	}
 	else if(menuOption == 2){
-		save = "save2.txt";
+		save = "saves/save2.txt";
 	}
 	else if(menuOption == 3){
-		save = "save3.txt";
+		save = "saves/save3.txt";
 	}
 	if(newGame){
 		ofstream file (save);
@@ -1906,22 +1906,22 @@ void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie, int &unlocked,
 							string save;
 							char buffer[5];
 							if(menuOption == 1){
-								save = "save1.txt";
+								save = "saves/save1.txt";
 							}
 							else if(menuOption == 2){
-								save = "save2.txt";
+								save = "saves/save2.txt";
 							}
 							else if(menuOption == 3){
-								save = "save3.txt";
+								save = "saves/save3.txt";
 							}
 							ofstream file (save);
 							if(file.is_open()){
 								file << _itoa(unlocked, buffer, 10);;
 							}
 						}
-						level = "loadLevel.txt";
+						level = "levels/loadLevel.txt";
 						levelEnemies = " ";
-						levelBackground = "basicBackground.bmp";
+						levelBackground = "images/basicBackground.bmp";
 						mackenzie.x = 64+(unlocked-1)*192;
 						mackenzie.y = 394;
 						mackenzie.vx = 0;
@@ -2198,9 +2198,9 @@ void hitMackenzie(Mackenzie &mackenzie, ALLEGRO_SAMPLE *mackenzie_hit){
 
 void loadLevel(int levelNumber){
 	char buffer[5];
-	level = "Level";
-	levelEnemies = "LevelEnemies";
-	levelBackground = "LevelBackground";
+	level = "levels/Level";
+	levelEnemies = "levels/LevelEnemies";
+	levelBackground = "images/LevelBackground";
 	level += _itoa(levelNumber, buffer, 10);
 	levelEnemies += _itoa(levelNumber, buffer, 10);
 	levelBackground += _itoa(levelNumber, buffer, 10);
@@ -2329,31 +2329,31 @@ void attack(Mackenzie &mackenzie, Enemy &enemy, EBullet ebullets[], int size){
 	}
 }
 void cutscene(Brick brick, int currentLevel) {
-	string scene = "testScene.txt";
+	string scene = "levels/testScene.txt";
 	switch(currentLevel) {
 	case 0:
-		scene = "cutscene0.txt";
+		scene = "levels/cutscene0.txt";
 		break;
 	case 1:
-		scene = "cutscene1.txt";
+		scene = "levels/cutscene1.txt";
 		break;
 	case 2:
-		scene = "cutscene2.txt";
+		scene = "levels/cutscene2.txt";
 		break;
 	case 3:
-		scene = "cutscene3.txt";
+		scene = "levels/cutscene3.txt";
 		break;
 	case 4:
-		scene = "cutscene4.txt";
+		scene = "levels/cutscene4.txt";
 		break;
 	case 5:
-		scene = "cutscene5.txt";
+		scene = "levels/cutscene5.txt";
 		break;
 	case 6:
-		scene = "cutscene6.txt";
+		scene = "levels/cutscene6.txt";
 		break;
 	case 7:
-		scene = "cutscene7.txt";
+		scene = "levels/cutscene7.txt";
 		break;
 	}
 	cutsceneFile.open(scene);

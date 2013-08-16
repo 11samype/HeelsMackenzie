@@ -1,15 +1,17 @@
-﻿  main.cpp
-c:\users\tombn\heelsmackenzie\allegrotest\main.cpp(1737): warning C4996: '_itoa': This function or variable may be unsafe. Consider using _itoa_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-          c:\program files (x86)\microsoft visual studio 9.0\vc\include\stdlib.h(451) : see declaration of '_itoa'
-c:\users\tombn\heelsmackenzie\allegrotest\main.cpp(1741): warning C4996: '_itoa': This function or variable may be unsafe. Consider using _itoa_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-          c:\program files (x86)\microsoft visual studio 9.0\vc\include\stdlib.h(451) : see declaration of '_itoa'
-c:\users\tombn\heelsmackenzie\allegrotest\main.cpp(1839): warning C4996: '_itoa': This function or variable may be unsafe. Consider using _itoa_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-          c:\program files (x86)\microsoft visual studio 9.0\vc\include\stdlib.h(451) : see declaration of '_itoa'
-c:\users\tombn\heelsmackenzie\allegrotest\main.cpp(2124): warning C4996: '_itoa': This function or variable may be unsafe. Consider using _itoa_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-          c:\program files (x86)\microsoft visual studio 9.0\vc\include\stdlib.h(451) : see declaration of '_itoa'
-c:\users\tombn\heelsmackenzie\allegrotest\main.cpp(2125): warning C4996: '_itoa': This function or variable may be unsafe. Consider using _itoa_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-          c:\program files (x86)\microsoft visual studio 9.0\vc\include\stdlib.h(451) : see declaration of '_itoa'
-c:\users\tombn\heelsmackenzie\allegrotest\main.cpp(2126): warning C4996: '_itoa': This function or variable may be unsafe. Consider using _itoa_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-          c:\program files (x86)\microsoft visual studio 9.0\vc\include\stdlib.h(451) : see declaration of '_itoa'
-  LINK : C:\Users\tombn\HeelsMackenzie\Debug\HeelsMackenzie.exe not found or not built by the last incremental link; performing full link
-  AllegroTest.vcxproj -> C:\Users\tombn\HeelsMackenzie\Debug\HeelsMackenzie.exe
+﻿Build started 8/15/2013 10:58:49 PM.
+     1>Project "C:\Users\a0221542\HeelsMackenzie\AllegroTest\AllegroTest.vcxproj" on node 2 (build target(s)).
+     1>InitializeBuildStatus:
+         Creating "Debug\HeelsMackenzie.unsuccessfulbuild" because "AlwaysCreate" was specified.
+       ClCompile:
+         All outputs are up-to-date.
+       Link:
+         All outputs are up-to-date.
+         AllegroTest.vcxproj -> C:\Users\a0221542\HeelsMackenzie\Debug\HeelsMackenzie.exe
+       FinalizeBuildStatus:
+         Deleting file "Debug\HeelsMackenzie.unsuccessfulbuild".
+         Touching "Debug\HeelsMackenzie.lastbuildstate".
+     1>Done Building Project "C:\Users\a0221542\HeelsMackenzie\AllegroTest\AllegroTest.vcxproj" (build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:00.07

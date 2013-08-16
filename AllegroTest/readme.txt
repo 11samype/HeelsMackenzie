@@ -12,3 +12,7 @@ Tip: hold the up button to jump higher, it is not timing based, just hold it
 Version 1.0.1:
 
 Added Credits
+
+version 1.0.2
+
+Reorganized files
