@@ -1,8 +1,8 @@
-//Object IDS
+// Object IDS
 enum IDS{PLAYER, BULLET, GHOST, BRICK, SPRING, WATER,
 	BOMB, JUMP, CANNON, EBULLET, LEVEL, FINISH, BOSS, SEAWEED, LIGHTNING, CUTSCENE};
 
-//Our Player
+// Our Player
 struct Mackenzie
 {
 	int ID;
