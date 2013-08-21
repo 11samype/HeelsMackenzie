@@ -556,15 +556,21 @@ int main ()
 
 				if(difficult)
 				{
+					//classic
 					stun = 4;
 					mackenzie.lives = 3;
 					gravity = .175;
+					mackenzie.acc = .075;
+					mackenzie.dec = .5;
 				}
 				else
 				{
+					//normal
 					stun = 5; // outside of stun range
 					mackenzie.lives = 5;
 					gravity = .2;
+					mackenzie.acc = .075;
+					mackenzie.dec = .5;
 				}
 
 				InitEnemy(enemies, NUM_ENEMIES, levelEnemies, deadZone);
@@ -684,11 +690,29 @@ int main ()
 					break;
 				case ALLEGRO_KEY_DOWN:
 					keys[DOWN] = true;
-					if(mackenzie.onGround && mackenzie.timer < stun) // stun adjust
+					if(difficult)
 					{
-						mackenzie.isCrouched = true;
-						mackenzie.y += 32;
-						mackenzie.x -= 14;
+						//classic
+						if(mackenzie.onGround && mackenzie.timer < stun) // stun adjust
+						{
+							mackenzie.isCrouched = true;
+							mackenzie.y += 32;
+							mackenzie.x -= 14;
+						}
+					}
+					else
+					{
+						//normal
+						if(mackenzie.timer < stun) // stun adjust
+						{
+							mackenzie.isCrouched = true;
+							
+							if(!keys[LEFT] && !keys[RIGHT])
+							{
+								mackenzie.y += 32;
+								mackenzie.x -= 14;
+							}
+						}
 					}
 					break;
 				case ALLEGRO_KEY_LEFT:
@@ -724,11 +748,27 @@ int main ()
 					break;
 				case ALLEGRO_KEY_DOWN:
 					keys[DOWN] = false;
-					if(mackenzie.isCrouched)
+					// may need to change
+					if(difficult)
 					{
-						mackenzie.isCrouched = false;
-						mackenzie.y -= 32;
-						mackenzie.x += 14;
+						if(mackenzie.isCrouched)
+						{
+							mackenzie.isCrouched = false;
+							mackenzie.y -= 32;
+							mackenzie.x += 14;
+						}
+					}
+					else
+					{
+						if(mackenzie.isCrouched)
+						{
+							mackenzie.isCrouched = false;
+							if(!keys[LEFT] && !keys[RIGHT])
+							{
+								mackenzie.y -= 32;
+								mackenzie.x += 14;
+							}
+						}
 					}
 					break;
 				case ALLEGRO_KEY_LEFT:
@@ -841,12 +881,6 @@ int main ()
 						break;
 					case ALLEGRO_KEY_DOWN:
 						keys[DOWN] = false;
-						if(mackenzie.isCrouched)
-						{
-							mackenzie.isCrouched = false;
-							mackenzie.y -= 32;
-							mackenzie.x += 14;
-						}
 						break;
 					case ALLEGRO_KEY_LEFT:
 						keys[LEFT] = false;
@@ -985,7 +1019,6 @@ int main ()
 	al_destroy_sample(song);
 
 	return 0;
-
 }
 
 void drawCredits(ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title)
@@ -1610,25 +1643,41 @@ void UpdateMackenzie(Mackenzie &mackenzie, int &mapoffx, int deadZone)
 	//kinetic friction only if you dont press left or right
 	if(!(keys[LEFT] ^ keys[RIGHT]))
 	{
-		mackenzie.vx -= mackenzie.acc * ((mackenzie.vx > 0) - (mackenzie.vx < 0));
+		// higher value means less sliding
+		float slideValue;
+		if(difficult)
+		{
+			//classic
+			slideValue = 1;
+		}
+		else
+		{
+			//normal
+			slideValue = 3;
+		}
+		
+		mackenzie.vx -= mackenzie.acc * slideValue * ((mackenzie.vx > 0) - (mackenzie.vx < 0));
 	}
 
 	//static friction
-	if(mackenzie.vx < mackenzie.acc && mackenzie.vx > -mackenzie.acc)
+	if((mackenzie.vx < mackenzie.acc) && (mackenzie.vx > -mackenzie.acc))
 	{
 		mackenzie.vx = 0;
 	}
 
+	//moonwalk?
 	if(keys[RIGHT] && keys[LEFT])
 	{
 		mackenzie.vx = -2;
 	}
 
+	//Update position
 	mackenzie.x += mackenzie.vx;
 	mackenzie.y += mackenzie.vy;
-	if((mackenzie.x - mapoffx) > WIDTH-deadZone)
+
+	if((mackenzie.x - mapoffx) > WIDTH - deadZone)
 	{
-		mapoffx = mackenzie.x - (WIDTH-deadZone);
+		mapoffx = mackenzie.x - (WIDTH - deadZone);
 	}
 	else if((mackenzie.x - mapoffx) < deadZone)
 	{
@@ -2271,14 +2320,22 @@ void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie, int &unlocked,
 				}
 				else
 				{
-					if(bricks[i].ID == WATER)
+					if(difficult)
 					{
-						if(mackenzie.isCrouched)
+						//classic
+						if(bricks[i].ID == WATER)
 						{
-							mackenzie.isCrouched = false;
-							mackenzie.y -= 32;
-							mackenzie.x += 14;
+							if(mackenzie.isCrouched)
+							{
+								mackenzie.isCrouched = false;
+								mackenzie.y -= 32;
+								mackenzie.x += 14;
+							}
 						}
+					}
+					else
+					{
+						//normal
 					}
 					CollideBrickLeft(bricks, size, mackenzie);
 					CollideBrickRight(bricks, size, mackenzie);
@@ -2293,11 +2350,22 @@ void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie, int &unlocked,
 	if(!collided)
 	{
 		mackenzie.onGround = false;
-		if(mackenzie.isCrouched)
+		
+		// doesnt seem to change anything ??
+		
+		if(difficult)
 		{
-			mackenzie.isCrouched = false;
-			mackenzie.y -= 32;
-			mackenzie.x += 16;
+			//classic
+			if(mackenzie.isCrouched)
+			{
+				mackenzie.isCrouched = false;
+				mackenzie.y -= 32;
+				mackenzie.x += 16;
+			}
+		}
+		else
+		{
+			//normal
 		}
 	}
 
@@ -2431,9 +2499,11 @@ void CollideBrickDown(Brick bricks[], int size, Mackenzie &mackenzie)
 						mackenzie.vy = -10;
 					}
 					mackenzie.onGround = false;
+					//no crouch while on spring
 					if(mackenzie.isCrouched)
 					{
 						mackenzie.y -= 32;
+						mackenzie.x += 14;
 						mackenzie.isCrouched = false;
 					}
 				}
@@ -2615,12 +2685,20 @@ void DrawBackground(ALLEGRO_BITMAP *back, Brick bricks[], int size, int &mapoffx
 }
 void hitMackenzie(Mackenzie &mackenzie, ALLEGRO_SAMPLE *mackenzie_hit)
 {
-	if(mackenzie.isCrouched)
+	if(difficult)
 	{
-		mackenzie.isCrouched = false;
-		mackenzie.y -= 32;
-		mackenzie.x += 14;
-		keys[DOWN] = false;
+		//classic
+		if(mackenzie.isCrouched)
+		{
+			mackenzie.isCrouched = false;
+			mackenzie.y -= 32;
+			mackenzie.x += 14;
+			keys[DOWN] = false;
+		}
+	}
+	else
+	{
+		//normal
 	}
 	mackenzie.invincible = true;
 	mackenzie.timer = 4;
