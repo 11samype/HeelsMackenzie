@@ -34,18 +34,19 @@ bool keys[6] = {false, false, false, false, false, false};
 const int WIDTH = 854;
 const int HEIGHT = 480;
 
-/* Number of objects */
+/* Number Of Objects */
 
 const int NUM_BULLETS = 10;
 const int NUM_ENEMIES = 200;
 const int NUM_BRICKS = 6000;
 const int NUM_EBULLETS = 100; //enemy bullets
-const int NUM_LEVELS = 5; // never used?
 
 /* Gameplay Variables */
 
-const float GRAVITY = .175;
-const int STUN = 4;
+float gravity = .175;
+int stun = 4;
+bool difficult = false;
+int score = 0;
 
 /* Game State Variables */
 
@@ -76,7 +77,7 @@ void attack(Mackenzie &mackenzie, Enemy &enemy);
 /* Menu Functions */
 
 void drawMenu(int menuOption, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title);
-void drawStart(int startOption, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title);
+void drawStart(int startOption, bool difficult, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title);
 void drawPause(int pauseOption, ALLEGRO_FONT *size18);
 void drawCredits(ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title);
 
@@ -154,6 +155,8 @@ void nextScenePage();
 
 int main ()
 {
+	enum START{ZERO, NEW, LOAD, CREDITS, EXIT};
+	enum MENU{ZERO1, SAVE1, SAVE2, SAVE3, BACK};
 	bool michael = false;
 	bool done = true;
 	bool redraw = true;
@@ -329,8 +332,8 @@ int main ()
 		keys[SPACE] = false;
 		keys[ENTER] = false;
 		mapoffx = 0;
-		menuOption = 1;
-		startOption = 1;
+		menuOption = SAVE1;
+		startOption = NEW;
 		pauseOption = 1;
 
 		InitMackenzie(mackenzie);
@@ -341,7 +344,7 @@ int main ()
 
 		mackenzie.x = WIDTH/2 - 100;
 		mackenzie.y = 60 + startOption * 80;
-		drawStart(startOption, font64, font18, title);
+		drawStart(startOption, difficult, font64, font18, title);
 		DrawMackenzie(mackenzie, mackenziePic, mackenziePicCrouch, moonWalkerPic,  mapoffx, MACKENZIE_WIDTH, MACKENZIE_HEIGHT, bullet_blast, bullets, michael);
 		al_flip_display();
 		al_clear_to_color(al_map_rgb(0, 0, 0));
@@ -357,13 +360,13 @@ int main ()
 				switch(ev.keyboard.keycode)
 				{
 				case ALLEGRO_KEY_UP:
-					if(!(startOption <= 1))
+					if(!(startOption <= NEW))
 					{
 						startOption--;
 					}
 					break;
 				case ALLEGRO_KEY_DOWN:
-					if(!(startOption >= 4))
+					if(!(startOption >= EXIT))
 					{
 						startOption++;
 					}
@@ -373,6 +376,16 @@ int main ()
 					break;
 				case ALLEGRO_KEY_SPACE:
 					startUpScreen = false;
+					break;
+				case ALLEGRO_KEY_D:
+					if(difficult)
+					{
+						difficult = false;
+					}
+					else
+					{
+						difficult = true;
+					}
 					break;
 				}
 			}
@@ -391,7 +404,7 @@ int main ()
 				redraw = false;
 				mackenzie.x = WIDTH/2 - 100;
 				mackenzie.y = 60 + startOption * 80;
-				drawStart(startOption, font64, font18, title);
+				drawStart(startOption, difficult, font64, font18, title);
 				DrawMackenzie(mackenzie, mackenziePic, mackenziePicCrouch, moonWalkerPic,  mapoffx, MACKENZIE_WIDTH, MACKENZIE_HEIGHT, bullet_blast, bullets, michael);
 				
 				al_flip_display();
@@ -401,18 +414,18 @@ int main ()
 
 		switch(startOption)
 		{
-		case 1:
+		case NEW:
 			newGame = true;
 			menuSelect = true;
 			break;
-		case 2:
+		case LOAD:
 			newGame = false;
 			menuSelect = true;
 			break;
-		case 3:
+		case CREDITS:
 			credits = true;
 			break;
-		case 4:
+		case EXIT:
 			exit(0);
 			break;
 		}
@@ -473,13 +486,13 @@ int main ()
 				switch(ev.keyboard.keycode)
 				{
 				case ALLEGRO_KEY_UP:
-					if(!(menuOption <= 1))
+					if(!(menuOption <= SAVE1))
 					{
 						menuOption--;
 					}
 					break;
 				case ALLEGRO_KEY_DOWN:
-					if(!(menuOption >= 4))
+					if(!(menuOption >= BACK))
 					{
 						menuOption++;
 					}
@@ -516,7 +529,7 @@ int main ()
 			}
 		}
 		
-		if(menuOption != 4)
+		if(menuOption != BACK)
 		{
 			unlocked = loadSave(menuOption, newGame);
 			redraw = true;
@@ -539,7 +552,21 @@ int main ()
 			al_wait_for_event(event_queue, &ev);
 			if(loadNewLevel)
 			{
-				mackenzie.lives = 3;
+				/* Set Up Difficulty */
+
+				if(difficult)
+				{
+					stun = 4;
+					mackenzie.lives = 3;
+					gravity = .175;
+				}
+				else
+				{
+					stun = 5; // outside of stun range
+					mackenzie.lives = 5;
+					gravity = .2;
+				}
+
 				InitEnemy(enemies, NUM_ENEMIES, levelEnemies, deadZone);
 				InitBrick(bricks, NUM_BRICKS, level, mackenzie);
 				InitBullet(bullets, NUM_BULLETS);
@@ -594,7 +621,6 @@ int main ()
 					break;
 	
 				}
-
 			}
 
 			if (inCutscene == 0)
@@ -658,7 +684,7 @@ int main ()
 					break;
 				case ALLEGRO_KEY_DOWN:
 					keys[DOWN] = true;
-					if(mackenzie.onGround)// && mackenzie.timer < STUN)
+					if(mackenzie.onGround && mackenzie.timer < stun) // stun adjust
 					{
 						mackenzie.isCrouched = true;
 						mackenzie.y += 32;
@@ -942,6 +968,13 @@ int main ()
 				{
 					al_draw_bitmap(heel, 10 + offset * i, 10, 0);
 				}
+
+				if(!difficult)
+				{
+					//draw score
+					al_draw_textf(font18, al_map_rgb(255, 255, 255), WIDTH * 3/5, 15, ALLEGRO_ALIGN_RIGHT, "SCORE: %d", score);
+				}
+
 				al_flip_display();
 				al_clear_to_color(al_map_rgb(0, 0, 0));
 				//end drawing and updating everything
@@ -994,8 +1027,17 @@ void drawMenu(int menuOption, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGR
 	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 402, 
 		ALLEGRO_ALIGN_CENTER, "Back");
 }
-void drawStart(int startOption, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title)
+void drawStart(int startOption, bool difficult, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title)
 {
+	string difficultString;
+	if(difficult)
+	{
+		difficultString = "Classic";
+	}
+	else
+	{
+		difficultString = "Normal";
+	}
 	al_draw_bitmap(title, 0, 0, 0);
 	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 162, 
 		ALLEGRO_ALIGN_CENTER, "New Game");
@@ -1005,12 +1047,15 @@ void drawStart(int startOption, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLE
 		ALLEGRO_ALIGN_CENTER, "Credits");
 	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 402, 
 		ALLEGRO_ALIGN_CENTER, "Exit");
+	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 450, 
+		ALLEGRO_ALIGN_CENTER, "Difficulty (D): %s", difficultString.c_str());
 }
 
 int loadSave(int menuOption, bool newGame)
 {
 	string line;
 	string save;
+	string scoreString;
 	int value = 0;
 	if(menuOption == 1)
 	{
@@ -1029,7 +1074,7 @@ int loadSave(int menuOption, bool newGame)
 		ofstream file (save);
 		if(file.is_open())
 		{
-			file << "1";
+			file << "1\n0";
 		}
 	}
 	ifstream file (save);
@@ -1038,10 +1083,12 @@ int loadSave(int menuOption, bool newGame)
 		while (file.good() && !file.eof())
 		{
 			getline (file, line);
+			getline (file, scoreString);
 		}
 		file.close();
 	}
 	value = atoi(line.c_str());
+	score = atoi(scoreString.c_str());
 	return value;
 }
 
@@ -1071,7 +1118,7 @@ void InitMackenzie(Mackenzie &mackenzie)
 }
 void DrawMackenzie(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, ALLEGRO_BITMAP *mackenziePicCrouch, ALLEGRO_BITMAP *moonWalkerPic, int &mapoffx, int mackenzieWidth, int mackenzieHeight, ALLEGRO_BITMAP *bullet_blast, Bullet bullets[], bool michael)
 {
-	if(mackenzie.kicked && mackenzie.timer < STUN)
+	if(mackenzie.kicked && mackenzie.timer < stun)
 	{
 		DrawKick(mackenzie, mackenziePic, mackenziePicCrouch, mackenzieWidth, mackenzieHeight, bullet_blast, bullets, mapoffx);
 	}
@@ -1459,7 +1506,7 @@ void DrawKick(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, ALLEGRO_BITMAP
 
 void JumpMackenzie(Mackenzie &mackenzie, ALLEGRO_SAMPLE *jumpSound)
 {
-	if(mackenzie.timer < STUN)
+	if(mackenzie.timer < stun)
 	{
 		if(mackenzie.onGround || mackenzie.extraJump)
 		{
@@ -1468,7 +1515,6 @@ void JumpMackenzie(Mackenzie &mackenzie, ALLEGRO_SAMPLE *jumpSound)
 			mackenzie.onGround = false;
 			mackenzie.extraJump = false;
 			mackenzie.jumped = true;
-
 		}
 	}
 }
@@ -1478,7 +1524,7 @@ void MoveMackenzieDown(Mackenzie &mackenzie)
 }
 void MoveMackenzieLeft(Mackenzie &mackenzie)
 {
-	if(mackenzie.timer < STUN)
+	if(mackenzie.timer < stun)
 	{
 		mackenzie.isFacingRight = false;
 		if(mackenzie.isCrouched)
@@ -1504,7 +1550,7 @@ void MoveMackenzieLeft(Mackenzie &mackenzie)
 }
 void MoveMackenzieRight(Mackenzie &mackenzie)
 {
-	if(mackenzie.timer < STUN)
+	if(mackenzie.timer < stun)
 	{
 		mackenzie.isFacingRight = true;
 		if(mackenzie.isCrouched)
@@ -1553,7 +1599,7 @@ void UpdateMackenzie(Mackenzie &mackenzie, int &mapoffx, int deadZone)
 	}
 
 	//add gravity to velocity
-	mackenzie.vy += GRAVITY;
+	mackenzie.vy += gravity;
 
 	//max vel downword
 	if(mackenzie.vy > 15)
@@ -1619,7 +1665,7 @@ void DrawBullet(Bullet bullets[], int size, int &mapoffx)
 }
 void FireBullet(Bullet bullets[], int size, Mackenzie &mackenzie, ALLEGRO_SAMPLE *gunShot)
 {
-	if(mackenzie.timer < STUN)
+	if(mackenzie.timer < stun)
 	{
 		for(int i = 0; i < size; i++)
 		{
@@ -1711,10 +1757,12 @@ void CollideBullet(Bullet bullets[], int bSize, Enemy enemies[], int eSize, Bric
 							if(enemies[j].ID == GHOST)
 							{
 								al_play_sample(ghost_death, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+								score += 100;
 							}
 							else if(enemies[j].ID == BOMB)
 							{
 								al_play_sample(explosion, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
+								score += 100;
 							}
 						}
 						else
@@ -1808,7 +1856,6 @@ void InitEnemy(Enemy enemies[], int size, string levelEnemies, int &deadZone)
 					enemies[enemyInc].attackCounter = 0;
 					enemyInc++;
 				}
-
 			}
 			yOffset += 32;
 		}
@@ -2149,6 +2196,7 @@ void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie, int &unlocked,
 				(mackenzie.x + mackenzie.boundRight) < (bricks[i].x + bricks[i].size) ||
 				(mackenzie.x + mackenzie.boundLeft) > (bricks[i].x + bricks[i].size*3))){
 					mackenzie.extraJump = true;
+					score += 100;
 					al_play_sample(powerup, 1, 0, 1, ALLEGRO_PLAYMODE_ONCE, NULL);
 					bricks[i].x = -32;
 					bricks[i].y = -32;
@@ -2156,7 +2204,7 @@ void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie, int &unlocked,
 		}
 		else if (bricks[i].ID == CUTSCENE) 
 		{
-			printf("%d", inCutscene);
+			//printf("%d", inCutscene);
 			if (inCutscene < 0)
 			{
 				if (!((mackenzie.x + mackenzie.boundRight) < bricks[i].x ||
@@ -2206,7 +2254,10 @@ void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie, int &unlocked,
 						ofstream file (save);
 						if(file.is_open())
 						{
-							file << _itoa(unlocked, buffer, 10);;
+							string saveContents = _itoa(unlocked, buffer, 10);
+							saveContents += "\n";
+							saveContents += _itoa(score, buffer, 10);
+							file << saveContents;
 						}
 					}
 					level = "levels/loadLevel.txt";
@@ -2370,7 +2421,7 @@ void CollideBrickDown(Brick bricks[], int size, Mackenzie &mackenzie)
 				mackenzie.extraJump = false;
 				if(bricks[i].ID == SPRING)
 				{
-					if(!(mackenzie.timer < STUN))
+					if(!(mackenzie.timer < stun))
 					{
 						mackenzie.vy = 0;
 						mackenzie.y = bricks[i].y - mackenzie.boundDown;
@@ -2588,8 +2639,16 @@ void loadLevel(int levelNumber)
 	level += _itoa(levelNumber, buffer, 10);
 	levelEnemies += _itoa(levelNumber, buffer, 10);
 	levelBackground += _itoa(levelNumber, buffer, 10);
-	level += ".txt";
-	levelEnemies += ".txt";
+	if(difficult)
+	{
+		level += ".txt";
+		levelEnemies += ".txt";
+	}
+	else
+	{
+		level += "new.txt";
+		levelEnemies += "new.txt";
+	}
 	levelBackground += ".bmp";
 	loadNewLevel = true;
 }
