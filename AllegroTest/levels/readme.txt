@@ -6,4 +6,4 @@ c - EyeBall Cannon
 o - Bomb
 w - Water
 g - Ghost
-j - Second Jump
+j - Second Jump Powerup
