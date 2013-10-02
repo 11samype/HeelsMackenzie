@@ -156,7 +156,8 @@ void nextScenePage();
 int main ()
 {
 	enum START{ZERO, NEW, LOAD, CREDITS, EXIT};
-	enum MENU{ZERO1, SAVE1, SAVE2, SAVE3, BACK};
+	enum MENU{ZERO1, SAVE1, SAVE2, SAVE3, BACK}; // menu items
+	enum SCREEN{START, CREDITS, MENU};
 	bool michael = false;
 	bool done = true;
 	bool redraw = true;
