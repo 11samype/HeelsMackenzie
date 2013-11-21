@@ -157,21 +157,22 @@ int main ()
 {
 	enum START{ZERO, NEW, LOAD, CREDITS, EXIT};
 	enum MENU{ZERO1, SAVE1, SAVE2, SAVE3, BACK}; // menu items
-	//enum SCREEN{START, CREDITS, MENU};
+	enum PAUSE{ZERO2, RETURN, LEVELSELECT, STARTMENU, EXITFROMPAUSE}; // pause menu items
+	
 	bool michael = false;
 	bool done = true;
 	bool redraw = true;
 	bool menuSelect = false;
-	int menuOption = 1;
+	int menuOption = SAVE1;
 	bool exitGame = false;
 	bool startUpScreen = true;
-	int startOption = 1;
+	int startOption = NEW;
 	bool newGame = false;
 	int unlocked = 1;
 	int currentLevel = 0;
 	bool credits = false;
 
-	int pauseOption = 1;
+	int pauseOption = RETURN;
 
 	/* Set Up Bitmaps */
 
@@ -203,8 +204,8 @@ int main ()
 	int elapsedTime = 0;
 	int actualFPS = 0;
 
-	int mapoffx = 0;    //?
-	int deadZone = 350; //?
+	int mapoffx = 0;    // 0 to start but does change
+	int deadZone = 350; //
 
 	/* Mackenzie Sprite Size */
 
@@ -224,6 +225,7 @@ int main ()
 	{
 		return -1;
 	}
+
 	al_set_new_display_flags(ALLEGRO_WINDOWED | ALLEGRO_RESIZABLE);
 	display = al_create_display(WIDTH, HEIGHT);
 	
@@ -231,6 +233,7 @@ int main ()
 	{
 		return -1;
 	}
+
 	timer = al_create_timer(1.0/FPS);
 	
 	al_init_primitives_addon();
@@ -241,7 +244,7 @@ int main ()
 
 	/* Music & Sounds */
 	
-	const int MAX_SOUNDS = 4;
+	const int MAX_SOUNDS = 4; // may need more
 
 	al_install_audio();
 	al_init_acodec_addon();
@@ -291,7 +294,7 @@ int main ()
 	al_register_event_source(event_queue, al_get_display_event_source(display));
 	al_register_event_source(event_queue, al_get_timer_event_source(timer));
 
-	/* Set Up Bitmap Transparency */
+	/* Set Bitmap Transparency */
 
 	al_convert_mask_to_alpha(ghost, al_map_rgb(255, 0, 255));
 	al_convert_mask_to_alpha(mackenziePic, al_map_rgb(255, 0, 255));
@@ -315,7 +318,7 @@ int main ()
 
 	al_play_sample(song, 1, 0, 1, ALLEGRO_PLAYMODE_LOOP, NULL);
 
-	/* Set Up Player Objects */
+	/* Set Up Player & Enemy Objects */
 
 	Mackenzie mackenzie;
 	Bullet bullets[NUM_BULLETS];
@@ -335,7 +338,7 @@ int main ()
 		mapoffx = 0;
 		menuOption = SAVE1;
 		startOption = NEW;
-		pauseOption = 1;
+		pauseOption = RETURN;
 
 		InitMackenzie(mackenzie);
 		InitBullet(bullets, NUM_BULLETS);
@@ -567,7 +570,7 @@ int main ()
 				else
 				{
 					//normal
-					stun = 5; // outside of stun range
+					stun = 5; // outside of stun range, so no stun
 					mackenzie.lives = 5;
 					gravity = .2;
 					mackenzie.acc = .075;
@@ -823,14 +826,14 @@ int main ()
 					{
 					case ALLEGRO_KEY_UP:
 						keys[UP] = true;
-						if(!(pauseOption <= 1))
+						if(!(pauseOption <= RETURN))
 						{
 							pauseOption--;
 						}
 						break;
 					case ALLEGRO_KEY_DOWN:
 						keys[DOWN] = true;
-						if(!(pauseOption >= 4))
+						if(!(pauseOption >= EXITFROMPAUSE))
 						{
 							pauseOption++;
 						}
@@ -844,10 +847,10 @@ int main ()
 					case ALLEGRO_KEY_ENTER:
 						switch(pauseOption)
 						{
-						case 1:
+						case RETURN:
 							pause = false;
 							break;
-						case 2:
+						case LEVELSELECT:
 							loadNewLevel = true;
 							redraw = true;
 							level = "levels/loadLevel.txt";
@@ -859,12 +862,12 @@ int main ()
 							levelBackground = "images/basicBackground.bmp";
 							pause = false;
 							break;
-						case 3:
+						case STARTMENU:
 							startUpScreen = true;
 							done = true;
 							pause = false;
 							break;
-						case 4:
+						case EXITFROMPAUSE:
 							exit(0);
 						}
 						break;
@@ -1171,7 +1174,7 @@ void DrawMackenzie(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, ALLEGRO_B
 		else
 		{
 
-			if(!(mackenzie.vy != 0))
+			if(!(mackenzie.vy != 0)) // check for falling
 			{
 				DrawRunRight(mackenzie, mackenziePic, mackenziePicCrouch, mackenzieWidth, mackenzieHeight, mapoffx);
 			}
