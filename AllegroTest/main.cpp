@@ -562,7 +562,7 @@ int main ()
 				{
 					//classic
 					stun = 4;
-					mackenzie.lives = 3;
+					//mackenzie.lives = 3;
 					gravity = .175;
 					mackenzie.acc = .075;
 					mackenzie.dec = .5;
@@ -571,7 +571,7 @@ int main ()
 				{
 					//normal
 					stun = 5; // outside of stun range, so no stun
-					mackenzie.lives = 5;
+					//mackenzie.lives = 5;
 					gravity = .2;
 					mackenzie.acc = .075;
 					mackenzie.dec = .5;
@@ -902,6 +902,10 @@ int main ()
 				}
 				else if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE)
 				{
+					/* Destroy Display */
+
+					// TODO: destroy all other objects before close
+
 					al_destroy_display(display);
 					al_destroy_sample(song);
 					return 0;
@@ -988,6 +992,9 @@ int main ()
 				{
 					mackenzie.lives = 0;
 				}
+				
+				/* Cutscene */
+
 				if (cutline != "")
 				{
 					al_draw_filled_rounded_rectangle(0, HEIGHT - 80, WIDTH, HEIGHT, 10, 10, al_map_rgb(0,0,0));
@@ -996,15 +1003,28 @@ int main ()
 				al_draw_textf(font18, al_map_rgb(255, 255, 255), WIDTH, 0, 
 					ALLEGRO_ALIGN_RIGHT, "FPS : %i", actualFPS);
 
+				/* Show Debug Text */
+
 				if(debug)
 				{
 					al_draw_textf(font18, al_map_rgb(255, 255, 255), WIDTH, HEIGHT/2, ALLEGRO_ALIGN_RIGHT, "DEBUG");
 				}
 
-				int offset = 40;
-				for(int i = 0; i < mackenzie.lives; i++)
-				{
-					al_draw_bitmap(heel, 10 + offset * i, 10, 0);
+				/* Draw Lives */
+
+				if(mackenzie.lives < 10) {
+
+					int offset = 40; // TODO: make into a costant?
+					for(int i = 0; i < mackenzie.lives; i++)
+					{
+						al_draw_bitmap(heel, 10 + offset * i, 10, 0);
+					}
+
+				} else {
+
+					al_draw_bitmap(heel, 10, 10, 0);
+					al_draw_textf(font18, al_map_rgb(255, 255, 255), 50, 10, ALLEGRO_ALIGN_RIGHT, "%d", mackenzie.lives);
+
 				}
 
 				if(!difficult)
@@ -1019,6 +1039,9 @@ int main ()
 			}
 		}
 	}
+
+	// TODO: destroy all other objects when game ends
+
 	al_destroy_display(display);
 	al_destroy_sample(song);
 
@@ -1029,7 +1052,7 @@ void drawCredits(ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *tit
 {
 	al_draw_bitmap(title, 0, 0, 0);
 	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 162, 
-		ALLEGRO_ALIGN_CENTER, "Programming:   Brandon Tom, Nathan Jarvis");
+		ALLEGRO_ALIGN_CENTER, "Programming:   Brandon Tom, Nathan Jarvis, Peter Samyn");
 	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 242, 
 		ALLEGRO_ALIGN_CENTER, "Art & Animation:   Peter Samyn, Brandon Tom, Nathan Jarvis");
 	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 322, 
@@ -1134,7 +1157,11 @@ void InitMackenzie(Mackenzie &mackenzie)
 	mackenzie.x = 50;
 	mackenzie.y = 50;
 	mackenzie.ID = PLAYER;
-	mackenzie.lives = 3;
+	if(difficult) {
+		mackenzie.lives = 3;
+	} else {
+		mackenzie.lives = 5;
+	}
 	mackenzie.vx = 0;
 	mackenzie.vy = 0;
 	mackenzie.acc = .075;
