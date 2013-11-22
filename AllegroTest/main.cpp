@@ -66,7 +66,6 @@ string levelEnemies = " ";
 string levelBackground = "images/basicBackground.bmp";
 bool loadNewLevel = false;
 
-bool dead = false;  // add to Mackenzie?
 bool needPlayDeath = true;
 int bossHitCount = 0;
 
@@ -971,13 +970,13 @@ int main ()
 				DrawEBullet(ebullets, NUM_EBULLETS, mapoffx, lightning);
 				if(mackenzie.lives <= 0)
 				{
-					dead = true;
+					mackenzie.dead = true;
 					al_draw_textf(font64, al_map_rgb(rand()%255, rand()%255, rand()%255), 0 + rand()%300, 50 + rand()%(HEIGHT-150),	0, "GAME OVER");
 					al_draw_text(font64, al_map_rgb(255, 255, 255), 130, HEIGHT-70, 0, "Press [P] to Pause");
 					al_rest(.5);
 				}
 
-				if(dead)
+				if(mackenzie.dead)
 				{
 					if(needPlayDeath)
 					{
@@ -1191,6 +1190,7 @@ void InitMackenzie(Mackenzie &mackenzie)
 	mackenzie.isFacingRight = true;
 	mackenzie.jumped = false;
 	mackenzie.kicked = false;
+	mackenzie.dead = false;
 }
 void DrawMackenzie(Mackenzie &mackenzie, ALLEGRO_BITMAP *mackenziePic, ALLEGRO_BITMAP *mackenziePicCrouch, ALLEGRO_BITMAP *moonWalkerPic, int &mapoffx, int mackenzieWidth, int mackenzieHeight, ALLEGRO_BITMAP *bullet_blast, Bullet bullets[], bool michael)
 {

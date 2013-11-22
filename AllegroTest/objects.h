@@ -27,6 +27,7 @@ struct Mackenzie
 	bool isFacingRight;
 	bool jumped;
 	bool kicked;
+	bool dead;
 };
 
 struct Bullet
