@@ -76,14 +76,14 @@ void attack(Mackenzie &mackenzie, Enemy &enemy);
 
 /* Menu Functions */
 
-void drawMenu(int menuOption, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title);
+void drawMenu(Mackenzie &mackenzie, int menuOption, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title);
 void drawStart(int startOption, bool difficult, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title);
 void drawPause(int pauseOption, ALLEGRO_FONT *size18);
 void drawCredits(ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title);
 
 /* Load Funcions */
 void loadLevel(int levelNumber);
-int loadSave(int menuOption, bool newGame);
+int loadSave(Mackenzie &mackenzie, int menuOption, bool newGame);
 
 void hitMackenzie(Mackenzie &mackenzie, ALLEGRO_SAMPLE *mackenzie_hit);
 
@@ -475,7 +475,7 @@ int main ()
 
 		mackenzie.x = WIDTH/2 - 135;
 		mackenzie.y = 60 + menuOption * 80;
-		drawMenu(menuOption, font64, font18, title);
+		drawMenu(mackenzie, menuOption, font64, font18, title);
 		DrawMackenzie(mackenzie, mackenziePic, mackenziePicCrouch, moonWalkerPic, mapoffx, MACKENZIE_WIDTH, MACKENZIE_HEIGHT, bullet_blast, bullets, michael);
 		
 		al_flip_display();
@@ -526,7 +526,7 @@ int main ()
 				redraw = false;
 				mackenzie.x = WIDTH/2 - 135;
 				mackenzie.y = 60 + menuOption * 80;
-				drawMenu(menuOption, font64, font18, title);
+				drawMenu(mackenzie, menuOption, font64, font18, title);
 				DrawMackenzie(mackenzie, mackenziePic, mackenziePicCrouch, moonWalkerPic, mapoffx, MACKENZIE_WIDTH, MACKENZIE_HEIGHT, bullet_blast, bullets, michael);
 				al_flip_display();
 				al_clear_to_color(al_map_rgb(0, 0, 0));
@@ -535,7 +535,7 @@ int main ()
 		
 		if(menuOption != BACK)
 		{
-			unlocked = loadSave(menuOption, newGame);
+			unlocked = loadSave(mackenzie, menuOption, newGame);
 			redraw = true;
 			loadNewLevel = true;
 			level = "levels/loadLevel.txt";
@@ -1075,15 +1075,15 @@ void drawPause(int pauseOption, ALLEGRO_FONT *size18)
 	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 282, 
 		ALLEGRO_ALIGN_CENTER, "Exit Game");
 }
-void drawMenu(int menuOption, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title)
+void drawMenu(Mackenzie &mackenzie, int menuOption, ALLEGRO_FONT *size64, ALLEGRO_FONT *size18, ALLEGRO_BITMAP *title)
 {
 	al_draw_bitmap(title, 0, 0, 0);
 	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 162, 
-		ALLEGRO_ALIGN_CENTER, "Save Slot 1   Level: %i", loadSave(1, false));
+		ALLEGRO_ALIGN_CENTER, "Save Slot 1   Level: %i", loadSave(mackenzie, 1, false));
 	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 242, 
-		ALLEGRO_ALIGN_CENTER, "Save Slot 2   Level: %i", loadSave(2, false));
+		ALLEGRO_ALIGN_CENTER, "Save Slot 2   Level: %i", loadSave(mackenzie, 2, false));
 	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 322, 
-		ALLEGRO_ALIGN_CENTER, "Save Slot 3   Level: %i", loadSave(3, false));
+		ALLEGRO_ALIGN_CENTER, "Save Slot 3   Level: %i", loadSave(mackenzie, 3, false));
 	al_draw_textf(size18, al_map_rgb(255, 255, 255), WIDTH/2, 402, 
 		ALLEGRO_ALIGN_CENTER, "Back");
 }
@@ -1111,11 +1111,12 @@ void drawStart(int startOption, bool difficult, ALLEGRO_FONT *size64, ALLEGRO_FO
 		ALLEGRO_ALIGN_CENTER, "Difficulty (D): %s", difficultString.c_str());
 }
 
-int loadSave(int menuOption, bool newGame)
+int loadSave(Mackenzie &mackenzie, int menuOption, bool newGame)
 {
 	string line;
 	string save;
 	string scoreString;
+	string livesString;
 	int value = 0;
 	if(menuOption == 1)
 	{
@@ -1134,7 +1135,14 @@ int loadSave(int menuOption, bool newGame)
 		ofstream file (save);
 		if(file.is_open())
 		{
-			file << "1\n0";
+			if(difficult) {
+				//classic
+				file << "1\n0\n3";
+
+			} else {
+				//normal
+				file << "1\n0\n5";
+			}
 		}
 	}
 	ifstream file (save);
@@ -1144,11 +1152,13 @@ int loadSave(int menuOption, bool newGame)
 		{
 			getline (file, line);
 			getline (file, scoreString);
+			getline (file, livesString);
 		}
 		file.close();
 	}
 	value = atoi(line.c_str());
 	score = atoi(scoreString.c_str());
+	mackenzie.lives = atoi(livesString.c_str());
 	return value;
 }
 
@@ -1158,8 +1168,10 @@ void InitMackenzie(Mackenzie &mackenzie)
 	mackenzie.y = 50;
 	mackenzie.ID = PLAYER;
 	if(difficult) {
+		//classic
 		mackenzie.lives = 3;
 	} else {
+		//normal
 		mackenzie.lives = 5;
 	}
 	mackenzie.vx = 0;
@@ -1584,7 +1596,7 @@ void JumpMackenzie(Mackenzie &mackenzie, ALLEGRO_SAMPLE *jumpSound)
 }
 void MoveMackenzieDown(Mackenzie &mackenzie)
 {
-
+	//purposefully empty
 }
 void MoveMackenzieLeft(Mackenzie &mackenzie)
 {
@@ -2314,9 +2326,43 @@ void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie, int &unlocked,
 				}
 				else if(bricks[i].ID == FINISH)
 				{
-					if(unlocked == currentLevel)
-					{
-						unlocked++;
+					if(difficult) {
+						//classic
+						if(unlocked == currentLevel)
+						{
+							unlocked++;
+							string save;
+							char buffer[5];
+							if(menuOption == 1)
+							{
+								save = "saves/save1.txt";
+							}
+							else if(menuOption == 2)
+							{
+								save = "saves/save2.txt";
+							}
+							else if(menuOption == 3)
+							{
+								save = "saves/save3.txt";
+							}
+							ofstream file (save);
+							if(file.is_open())
+							{
+								string saveContents = _itoa(unlocked, buffer, 10);
+								saveContents += "\n";
+								saveContents += _itoa(score, buffer, 10);
+								saveContents += "\n";
+								saveContents += _itoa(mackenzie.lives, buffer, 10);
+								file << saveContents;
+							}
+						}
+
+					} else {
+						//normal
+						if(unlocked == currentLevel)
+						{
+							unlocked++;
+						}
 						string save;
 						char buffer[5];
 						if(menuOption == 1)
@@ -2337,9 +2383,12 @@ void CollideBrick(Brick bricks[], int size, Mackenzie &mackenzie, int &unlocked,
 							string saveContents = _itoa(unlocked, buffer, 10);
 							saveContents += "\n";
 							saveContents += _itoa(score, buffer, 10);
+							saveContents += "\n";
+							saveContents += _itoa(mackenzie.lives, buffer, 10);
 							file << saveContents;
 						}
 					}
+					
 					level = "levels/loadLevel.txt";
 					levelEnemies = " ";
 					levelBackground = "images/basicBackground.bmp";
@@ -2750,11 +2799,13 @@ void loadLevel(int levelNumber)
 	levelBackground += _itoa(levelNumber, buffer, 10);
 	if(difficult)
 	{
+		//classic
 		level += ".txt";
 		levelEnemies += ".txt";
 	}
 	else
 	{
+		//normal
 		level += "new.txt";
 		levelEnemies += "new.txt";
 	}
