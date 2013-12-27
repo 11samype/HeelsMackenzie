@@ -4,11 +4,11 @@
                                      w                                sss                                                                                                                              bb                                                                           
                  wwwww        o      w                                                                                                                                                                    bb                                                            sbbbbs
         b        wwwww        o      w ssssssss                                                                                                                                                              bbbbbbbbbbbbbbbbbbb
-        b        wwoww        o      w                           g         bbbbb                                
-        b        wwoww   sssssssss   w                                              bbbbbbbbb                                                                                                       sbbbbbb
-        b   bb   wwoww           g   w                           g                 b                                                                  sssssssssssssssss                
-     b  b  bbbb  wwoww  bb       g   w               sssssss                      bb                                                                                                bbbbbbbbbbbb                                              bbbbbbbbbbbbbbbbbsssbbbbbbbbbbbbbbb
-     b  b bbbbbbbwwwww           g   w                           g      bbbbbbbbbbbbbbbb                        ssssss       
+        b        wwoww        o      w                       g   g         bbbbb                                
+        b        wwoww   sssssssss   w                         g                    bbbbbbbbb                                                                                                       sbbbbbb
+        b   bb   wwoww           g   w                       g   g                 b                                                                  sssssssssssssssss                
+     b  b  bbbb  wwoww  bb       g   w               sssssss   g                  bb                                                                                                bbbbbbbbbbbb                                              bbbbbbbbbbbbbbbbbsssbbbbbbbbbbbbbbb
+     b  b bbbbbbbwwwww           g   w                       g   g      bbbbbbbbbbbbbbbb                        ssssss       
 bbbbbbsbbbbbbbbbbwwwww       o       w                                                                        
                  bbbbbbbbbbbbbbbbb   w                                                                         
                                                                                                               

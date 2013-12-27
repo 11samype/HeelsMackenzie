@@ -634,14 +634,17 @@ int main ()
 
 			if (inCutscene == 0)
 			{
-				if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_SPACE)
+				if (ev.type == ALLEGRO_EVENT_KEY_DOWN)
 				{
-					keys[LEFT] = false;
-					keys[RIGHT] = false;
-					keys[UP] = false;
-					keys[DOWN] = false;
-					keys[SPACE] = false;
-					nextScenePage();
+					if(ev.keyboard.keycode == ALLEGRO_KEY_SPACE || ev.keyboard.keycode == ALLEGRO_KEY_ENTER)
+					{
+						keys[LEFT] = false;
+						keys[RIGHT] = false;
+						keys[UP] = false;
+						keys[DOWN] = false;
+						keys[SPACE] = false;
+						nextScenePage();
+					}
 				}
 				goto draw;
 			}
@@ -870,6 +873,33 @@ int main ()
 							exit(0);
 						}
 						break;
+					case ALLEGRO_KEY_SPACE:
+						switch(pauseOption)
+						{
+						case RETURN:
+							pause = false;
+							break;
+						case LEVELSELECT:
+							loadNewLevel = true;
+							redraw = true;
+							level = "levels/loadLevel.txt";
+							mackenzie.x = 64 + (unlocked - 1) * 192;
+							mackenzie.y = 394;
+							mackenzie.vx = 0;
+							mackenzie.vy = 0;
+							levelEnemies = " ";
+							levelBackground = "images/basicBackground.bmp";
+							pause = false;
+							break;
+						case STARTMENU:
+							startUpScreen = true;
+							done = true;
+							pause = false;
+							break;
+						case EXITFROMPAUSE:
+							exit(0);
+						}
+						break;
 					case ALLEGRO_KEY_P:
 						pause = false;
 						break;
@@ -1013,7 +1043,7 @@ int main ()
 
 				if(mackenzie.lives < 10) {
 
-					int offset = 40; // TODO: make into a costant?
+					int offset = 40; // TODO: make into a constant?
 					for(int i = 0; i < mackenzie.lives; i++)
 					{
 						al_draw_bitmap(heel, 10 + offset * i, 10, 0);
